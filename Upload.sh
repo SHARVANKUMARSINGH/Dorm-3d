@@ -124,6 +124,10 @@ if [ ! -d ".git" ]; then
     echo "✅ Initialized empty Git repository."
 fi
 
+# Build project to ensure dist/ is fresh
+echo "🔨 Building production bundle..."
+npx vite build
+
 # Add all files to staging
 echo "➕ Staging project files..."
 git add .
@@ -132,15 +136,15 @@ git add .
 if git diff --staged --quiet; then
     echo "ℹ️ No new changes to commit."
 else
-    git commit -m "Initial commit: Haunted Dorm 3D Survival Simulator"
+    git commit -m "Update Dorm-3d with GitHub Pages deployment support"
     echo "✅ Committed project files."
 fi
 
 # Set branch to main now that commit exists
 git branch -M main
 
-# Step 5: Configure Remote & Push
-echo "🚀 Pushing to https://github.com/$GITHUB_USERNAME/$REPO_NAME..."
+# Step 5: Configure Remote & Push Main Branch
+echo "🚀 Pushing main branch to https://github.com/$GITHUB_USERNAME/$REPO_NAME..."
 
 # Set authenticated remote URL for push
 AUTHENTICATED_REMOTE="https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/${GITHUB_USERNAME}/${REPO_NAME}.git"
@@ -152,12 +156,25 @@ git remote add origin "$AUTHENTICATED_REMOTE"
 # Push to main branch
 git push -u origin main --force
 
+# Step 6: Deploy directly to gh-pages branch for instant live play!
+echo "🌐 Deploying built files directly to 'gh-pages' branch..."
+GH_PAGES_COMMIT=$(git subtree split --prefix dist main 2>/dev/null || true)
+if [ -n "$GH_PAGES_COMMIT" ]; then
+    git push "$AUTHENTICATED_REMOTE" "$GH_PAGES_COMMIT:refs/heads/gh-pages" --force
+    echo "✅ 'gh-pages' branch updated successfully!"
+fi
+
 # Remove sensitive token from .git/config after successful push
 git remote set-url origin "$CLEAN_REMOTE"
 
 echo ""
 echo "=========================================================="
 echo "🎉 SUCCESS! All files have been uploaded to GitHub!"
-echo "🔗 View your repository: https://github.com/$GITHUB_USERNAME/$REPO_NAME"
+echo "🔗 Repository: https://github.com/$GITHUB_USERNAME/$REPO_NAME"
+echo "🎮 Live Game URL: https://$GITHUB_USERNAME.github.io/$REPO_NAME/"
+echo ""
+echo "👉 If GitHub Pages is not live yet, go to:"
+echo "   https://github.com/$GITHUB_USERNAME/$REPO_NAME/settings/pages"
+echo "   and ensure Source is set to 'Deploy from a branch' -> 'gh-pages' / '(root)'"
 echo "=========================================================="
 echo ""
