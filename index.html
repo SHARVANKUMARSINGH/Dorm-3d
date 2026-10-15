@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Haunted Dorm 3D - Survival Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Inter:wght@400;600;700&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #06090e;
+      color: #f1f5f9;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    #game-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 1;
+    }
+
+    /* Common UI utilities */
+    .hidden {
+      display: none !important;
+    }
+
+    .ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .interactive {
+      pointer-events: auto;
+    }
+
+    button {
+      font-family: 'Chakra Petch', sans-serif;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      transition: all 0.15s ease-in-out;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    /* LOADING SCREEN */
+    #loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, #0f172a 0%, #030712 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      pointer-events: auto;
+    }
+
+    .loader-spinner {
+      width: 54px;
+      height: 54px;
+      border: 4px solid #1e293b;
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loader-title {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 26px;
+      letter-spacing: 3px;
+      color: #38bdf8;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    #loading-status {
+      font-size: 14px;
+      color: #94a3b8;
+    }
+
+    /* MAIN MENU */
+    #main-menu {
+      position: absolute;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.88);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 90;
+      pointer-events: auto;
+      padding: 20px;
+    }
+
+    .menu-card {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      box-shadow: 0 0 40px rgba(56, 189, 248, 0.15);
+      border-radius: 16px;
+      padding: 36px 44px;
+      max-width: 580px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .game-title {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 38px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #f8fafc;
+      text-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .game-subtitle {
+      font-size: 14px;
+      color: #94a3b8;
+      letter-spacing: 1px;
+      margin-bottom: 28px;
+      text-transform: uppercase;
+    }
+
+    .menu-btn {
+      width: 100%;
+      padding: 15px 20px;
+      margin-bottom: 14px;
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      border-radius: 10px;
+      text-transform: uppercase;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      color: #ffffff;
+      box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0ea5e9, #0284c7);
+      box-shadow: 0 6px 20px rgba(14, 165, 233, 0.6);
+    }
+
+    .btn-secondary {
+      background: #1e293b;
+      color: #38bdf8;
+      border: 1px solid #334155;
+    }
+    .btn-secondary:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .guide-box {
+      margin-top: 22px;
+      text-align: left;
+      background: rgba(2, 6, 23, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .guide-box h4 {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 14px;
+      color: #38bdf8;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .guide-item {
+      margin-bottom: 6px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    /* HUD OVERLAY */
+    #hud {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    /* Top Wave Banner */
+    .wave-banner {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 24px;
+      border-radius: 30px;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      pointer-events: auto;
+    }
+
+    .wave-banner.prep {
+      background: rgba(15, 23, 42, 0.88);
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .wave-banner.alert {
+      background: rgba(127, 29, 29, 0.9);
+      color: #fecaca;
+      border-color: rgba(239, 68, 68, 0.6);
+      animation: alertPulse 1.2s infinite;
+    }
+
+    @keyframes alertPulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+      50% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.9); }
+    }
+
+    .skip-btn {
+      background: #0284c7;
+      color: #ffffff;
+      padding: 4px 12px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Top Left Stats */
+    .top-left-hud {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hud-badge {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    .badge-icon {
+      font-size: 17px;
+    }
+
+    .stat-xp { color: #a855f7; }
+    .stat-gold { color: #eab308; }
+    .stat-hp { color: #22c55e; }
+
+    /* Top Right Minimap Radar */
+    .top-right-hud {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .minimap-container {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      text-align: center;
+    }
+
+    .minimap-title {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: #94a3b8;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    #minimap-canvas {
+      width: 140px;
+      height: 140px;
+      background: #090d16;
+      border-radius: 6px;
+      display: block;
+    }
+
+    /* Bottom Left Door Bar */
+    .bottom-left-hud {
+      position: absolute;
+      bottom: 24px;
+      left: 20px;
+      width: 280px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 12px 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .door-hud-header {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 6px;
+    }
+
+    .door-bar-track {
+      width: 100%;
+      height: 10px;
+      background: #1e293b;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    #door-hud-fill {
+      height: 100%;
+      width: 100%;
+      background: #22c55e;
+      transition: width 0.2s ease, background-color 0.2s ease;
+    }
+
+    /* Crosshair & Proximity Prompt */
+    .crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 6px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    #interaction-prompt {
+      position: absolute;
+      top: calc(50% + 24px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid #38bdf8;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+      color: #ffffff;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      display: none;
+      white-space: nowrap;
+    }
+
+    /* Floating Alert */
+    #floating-alert {
+      position: absolute;
+      top: 85px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 8px 24px;
+      border-radius: 20px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+      pointer-events: none;
+    }
+
+    #floating-alert.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Sleeping Cozy Overlay */
+    #sleep-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, rgba(15, 23, 42, 0.4) 0%, rgba(2, 6, 23, 0.85) 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding-bottom: 80px;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    .sleep-card {
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 16px;
+      padding: 16px 28px;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(56, 189, 248, 0.2);
+    }
+
+    .sleep-title {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-bottom: 4px;
+    }
+
+    .sleep-desc {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    /* CCTV OVERLAY (SURVEILLANCE CRT) */
+    #cctv-overlay {
+      position: absolute;
+      inset: 0;
+      background: #020408;
+      z-index: 30;
+      pointer-events: auto;
+      overflow: hidden;
+    }
+
+    /* CRT scanlines effect */
+    .cctv-scanlines {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.04));
+      background-size: 100% 3px, 4px 100%;
+      pointer-events: none;
+      z-index: 35;
+    }
+
+    .cctv-vignette {
+      position: absolute;
+      inset: 0;
+      box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.8), inset 0 0 40px rgba(34, 197, 94, 0.15);
+      pointer-events: none;
+      z-index: 36;
+    }
+
+    .cctv-header {
+      position: absolute;
+      top: 20px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'VT323', monospace;
+      font-size: 24px;
+      color: #4ade80;
+      text-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+      z-index: 40;
+    }
+
+    .rec-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #ef4444;
+    }
+
+    .rec-dot {
+      width: 12px;
+      height: 12px;
+      background: #ef4444;
+      border-radius: 50%;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    .cctv-controls-bar {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 10px 16px;
+      z-index: 40;
+    }
+
+    .cam-btn {
+      background: #1e293b;
+      color: #f1f5f9;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .cam-btn:hover {
+      background: #0284c7;
+    }
+
+    .stun-btn {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      color: #ffffff;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .repair-btn {
+      background: #15803d;
+      color: #ffffff;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .exit-cctv-btn {
+      background: #dc2626;
+      color: #ffffff;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    /* MODAL DIALOGS */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 80;
+      pointer-events: auto;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: #0f172a;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+      border-radius: 16px;
+      padding: 28px;
+      max-width: 460px;
+      width: 100%;
+    }
+
+    .modal-title {
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 14px;
+    }
+
+    .modal-stat-label { color: #94a3b8; }
+    .modal-stat-val { font-weight: 600; color: #f8fafc; }
+
+    .modal-btn-row {
+      margin-top: 22px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .modal-action-btn {
+      flex: 1;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .close-modal-btn {
+      background: transparent;
+      color: #94a3b8;
+      font-size: 20px;
+      padding: 4px;
+    }
+
+    /* Form inputs */
+    .form-group {
+      margin-bottom: 14px;
+      text-align: left;
+    }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      font-family: 'Chakra Petch', sans-serif;
+      text-transform: uppercase;
+    }
+    .form-input {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #f8fafc;
+      font-family: inherit;
+      font-size: 15px;
+      outline: none;
+    }
+    .form-input:focus {
+      border-color: #38bdf8;
+    }
+
+    /* IN-GAME CHAT */
+    #chat-panel {
+      position: absolute;
+      bottom: 24px;
+      right: 20px;
+      width: 280px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      z-index: 25;
+      pointer-events: auto;
+      overflow: hidden;
+    }
+
+    .chat-header {
+      padding: 8px 12px;
+      background: #1e293b;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: #38bdf8;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    #chat-messages {
+      height: 120px;
+      padding: 8px 12px;
+      overflow-y: auto;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .chat-msg .sender { color: #38bdf8; font-weight: 600; }
+    .chat-msg .time { color: #64748b; font-size: 10px; margin-right: 4px; }
+    .chat-msg .text { color: #e2e8f0; }
+
+    .quick-pings-bar {
+      display: flex;
+      gap: 4px;
+      padding: 4px 8px;
+      background: #0f172a;
+      border-top: 1px solid #1e293b;
+    }
+
+    .quick-ping {
+      flex: 1;
+      padding: 4px;
+      font-size: 10px;
+      background: #1e293b;
+      color: #94a3b8;
+      border-radius: 4px;
+    }
+    .quick-ping:hover { background: #334155; color: #fff; }
+
+    .chat-input-bar {
+      display: flex;
+      padding: 6px;
+      background: #1e293b;
+    }
+
+    #chat-input {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 6px 10px;
+      color: #fff;
+      font-size: 12px;
+      outline: none;
+    }
+
+    /* MOBILE CONTROLS */
+    #mobile-controls {
+      display: none;
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 28;
+    }
+
+    @media (pointer: coarse), (max-width: 900px) {
+      #mobile-controls {
+        display: block;
+      }
+    }
+
+    #touch-joystick-zone {
+      position: absolute;
+      bottom: 30px;
+      left: 30px;
+      width: 120px;
+      height: 120px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #touch-joystick-knob {
+      width: 50px;
+      height: 50px;
+      background: rgba(56, 189, 248, 0.6);
+      border: 2px solid #38bdf8;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .mobile-action-buttons {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .m-btn {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid #38bdf8;
+      color: #ffffff;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    /* DAMAGE FLASH */
+    #damage-flash {
+      position: absolute;
+      inset: 0;
+      background: #ef4444;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease-out;
+      z-index: 50;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- WebGL Render Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Damage Screen Flash -->
+  <div id="damage-flash"></div>
+
+  <!-- LOADING SCREEN -->
+  <div id="loading-overlay">
+    <div class="loader-spinner"></div>
+    <div class="loader-title">Haunted Dorm 3D</div>
+    <div id="loading-status">Loading game environment...</div>
+  </div>
+
+  <!-- MAIN MENU -->
+  <div id="main-menu" class="hidden">
+    <div class="menu-card">
+      <h1 class="game-title">HAUNTED DORM 3D</h1>
+      <p class="game-subtitle">First-Person Survival Simulator</p>
+
+      <button id="btn-solo" class="menu-btn btn-primary">Solo Survival</button>
+      <button id="btn-mp" class="menu-btn btn-secondary">Multiplayer (Wi-Fi / LAN / P2P)</button>
+
+      <div class="guide-box">
+        <h4>Survival Directives:</h4>
+        <div class="guide-item">
+          <span>🛏️</span>
+          <span><strong>Sleep in Bed:</strong> Passively earn XP and Gold every second while resting in bed.</span>
+        </div>
+        <div class="guide-item">
+          <span>🚪</span>
+          <span><strong>Fortify Door:</strong> Spend XP & Gold to upgrade and repair the bedroom door.</span>
+        </div>
+        <div class="guide-item">
+          <span>📹</span>
+          <span><strong>CCTV Security:</strong> Use the bedroom monitor to view outside hallway cameras and trigger UV Stun & Remote Repairs!</span>
+        </div>
+        <div class="guide-item">
+          <span>👻</span>
+          <span><strong>Survive Waves:</strong> The ghost attacks every 60s for 20-78s. Hold the door until sunrise!</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MULTIPLAYER P2P MODAL -->
+  <div id="mp-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-title">
+        <span>MULTIPLAYER P2P (LAN / Wi-Fi)</span>
+        <button id="btn-close-mp" class="close-modal-btn">✕</button>
+      </div>
+
+      <!-- Create Section -->
+      <div id="mp-create-section">
+        <h4 style="font-size: 14px; color: #38bdf8; margin-bottom: 12px; text-transform: uppercase;">Host New Server</h4>
+        <div class="form-group">
+          <label class="form-label">Server / Room Name</label>
+          <input id="mp-server-name" class="form-input" type="text" value="Sanctuary Alpha">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Player Capacity</label>
+          <select id="mp-player-size" class="form-input">
+            <option value="2">2 Players</option>
+            <option value="4" selected>4 Players</option>
+            <option value="6">6 Players</option>
+          </select>
+        </div>
+        <button id="btn-create-server" class="menu-btn btn-primary" style="margin-top: 10px;">Create Server (Host)</button>
+
+        <hr style="border: none; border-top: 1px solid #1e293b; margin: 20px 0;">
+
+        <!-- Join Section -->
+        <h4 style="font-size: 14px; color: #38bdf8; margin-bottom: 12px; text-transform: uppercase;">Join Existing Server</h4>
+        <div id="mp-join-section">
+          <div class="form-group">
+            <label class="form-label">Room Code</label>
+            <input id="mp-join-code" class="form-input" type="text" placeholder="e.g. DORM-8291">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Your Name</label>
+            <input id="mp-join-name" class="form-input" type="text" value="Survivor">
+          </div>
+          <button id="btn-join-server" class="menu-btn btn-secondary">Connect to Room</button>
+        </div>
+      </div>
+
+      <!-- Lobby Section (Once created/joined) -->
+      <div id="mp-lobby-section" class="hidden">
+        <div style="background: #030712; padding: 16px; border-radius: 10px; text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 12px; color: #94a3b8;">ROOM CODE (SHARE WITH WI-FI PEERS):</div>
+          <div id="mp-room-code-display" style="font-size: 28px; font-weight: 700; color: #38bdf8; letter-spacing: 3px; font-family: 'Chakra Petch'; margin: 6px 0;">—</div>
+          <div style="font-size: 11px; color: #64748b;">Any device connected to the same Wi-Fi, hotspot, or network can enter this code to join!</div>
+        </div>
+
+        <div id="mp-room-title" style="font-weight: 600; margin-bottom: 6px;">Room Lobby</div>
+        <div id="mp-status-msg" style="font-size: 13px; color: #22c55e; margin-bottom: 16px;">Ready! Waiting for survivors or start now.</div>
+        <button id="mp-start-game-btn" class="menu-btn btn-primary">Start Game Session</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- IN-GAME HUD -->
+  <div id="hud" class="ui-layer hidden">
+
+    <!-- Top Wave Banner -->
+    <div id="wave-banner" class="wave-banner prep">
+      <span>PREPARATION PHASE</span>
+      <strong class="time">60s</strong>
+      <button id="btn-skip-prep" class="skip-btn">⚡ SUMMON EARLY (+25% BONUS)</button>
+    </div>
+
+    <!-- Top Left Player Stats -->
+    <div class="top-left-hud">
+      <div class="hud-badge stat-hp">
+        <span class="badge-icon">❤️</span>
+        <span id="hud-player-hp">100 HP</span>
+      </div>
+      <div class="hud-badge stat-xp">
+        <span class="badge-icon">⚡</span>
+        <span id="hud-xp">0 XP</span>
+      </div>
+      <div class="hud-badge stat-gold">
+        <span class="badge-icon">🪙</span>
+        <span id="hud-gold">50 G</span>
+      </div>
+      <button id="btn-open-bed-modal" class="hud-badge interactive" style="background: #1e293b; color: #38bdf8; cursor: pointer;">
+        <span class="badge-icon">🛏️</span>
+        <span>Upgrade Bed</span>
+      </button>
+    </div>
+
+    <!-- Top Right Minimap Radar -->
+    <div class="top-right-hud">
+      <div class="minimap-container">
+        <div class="minimap-title">HOUSE RADAR</div>
+        <canvas id="minimap-canvas" width="140" height="140"></canvas>
+      </div>
+      <div id="mp-player-count" style="font-size: 12px; color: #94a3b8; font-weight: 600;"></div>
+    </div>
+
+    <!-- Bottom Left Door Status Bar -->
+    <div class="bottom-left-hud">
+      <div class="door-hud-header">
+        <span id="door-hud-text">Lvl 1 Door: 150/150 HP</span>
+      </div>
+      <div class="door-bar-track">
+        <div id="door-hud-fill"></div>
+      </div>
+    </div>
+
+    <!-- Center Reticle & Proximity Prompt -->
+    <div class="crosshair"></div>
+    <div id="interaction-prompt">[E] Inspect</div>
+
+    <!-- Floating Banner Alert -->
+    <div id="floating-alert">WAVE STARTED</div>
+
+    <!-- Sleeping Rest Overlay -->
+    <div id="sleep-overlay" class="hidden">
+      <div class="sleep-card">
+        <div class="sleep-title">💤 SLEEPING IN BED</div>
+        <div class="sleep-desc">Earning passive XP & Gold... Press [E] or [Space] to wake up.</div>
+      </div>
+    </div>
+
+    <!-- Chat Panel (Multiplayer) -->
+    <div id="chat-panel" class="hidden">
+      <div class="chat-header">
+        <span>SURVIVOR COMMS</span>
+        <span>ONLINE</span>
+      </div>
+      <div id="chat-messages">
+        <div class="chat-msg"><span class="sender">System:</span> <span class="text">Welcome to Dorm Survival!</span></div>
+      </div>
+      <div class="quick-pings-bar">
+        <button class="quick-ping" data-msg="⚠️ Ghost at my door!">Ghost!</button>
+        <button class="quick-ping" data-msg="🔧 Need door repairs!">Repair!</button>
+        <button class="quick-ping" data-msg="👍 Survived wave!">Nice!</button>
+      </div>
+      <div class="chat-input-bar">
+        <input id="chat-input" type="text" placeholder="Type message... (Enter)">
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CCTV SECURITY MONITOR OVERLAY -->
+  <div id="cctv-overlay" class="hidden">
+    <div class="cctv-scanlines"></div>
+    <div class="cctv-vignette"></div>
+
+    <div class="cctv-header">
+      <div class="rec-indicator">
+        <div class="rec-dot"></div>
+        <span>REC ● 00:02:45</span>
+      </div>
+      <div id="cctv-cam-title">CAM 01: OUTSIDE BEDROOM DOOR (HALLWAY)</div>
+      <div id="cctv-door-hp">DOOR HP: 150 / 150</div>
+    </div>
+
+    <div class="cctv-controls-bar">
+      <button id="cctv-cam1" class="cam-btn">CAM 01 (Door)</button>
+      <button id="cctv-cam2" class="cam-btn">CAM 02 (Hallway)</button>
+      <button id="cctv-cam3" class="cam-btn">CAM 03 (Living)</button>
+      <button id="cctv-cam4" class="cam-btn">CAM 04 (Attic)</button>
+      <button id="cctv-stun-btn" class="stun-btn">⚡ TRIGGER FLASH STUN</button>
+      <button id="cctv-repair-btn" class="repair-btn">🔧 REMOTE REPAIR (30 G)</button>
+      <button id="cctv-exit-btn" class="exit-cctv-btn">EXIT CCTV [ESC]</button>
+    </div>
+  </div>
+
+  <!-- DOOR UPGRADE / REPAIR MODAL -->
+  <div id="door-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-title">
+        <span>BEDROOM DEFENSE DOOR</span>
+        <button id="dm-close-btn" class="close-modal-btn">✕</button>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Current Door Level:</span>
+        <span id="dm-door-lvl" class="modal-stat-val">Level 1</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Door Integrity (HP):</span>
+        <span id="dm-door-hp" class="modal-stat-val">150 / 150</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Damage Resistance:</span>
+        <span id="dm-door-armor" class="modal-stat-val">0 DEF</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Upgrade Cost:</span>
+        <span id="dm-upgrade-cost" class="modal-stat-val" style="color: #38bdf8;">150 Gold + 40 XP</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Repair Cost (+60 HP):</span>
+        <span id="dm-repair-cost" class="modal-stat-val" style="color: #22c55e;">30 Gold</span>
+      </div>
+      <div class="modal-btn-row">
+        <button id="dm-repair-btn" class="modal-action-btn" style="background: #15803d; color: #ffffff;">Repair Door</button>
+        <button id="dm-upgrade-btn" class="modal-action-btn btn-primary">Upgrade Door</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BED UPGRADE MODAL -->
+  <div id="bed-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-title">
+        <span>BED SANCTUARY</span>
+        <button id="bm-close-btn" class="close-modal-btn">✕</button>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Current Bed:</span>
+        <span id="bm-bed-name" class="modal-stat-val">Creaky Cot</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Sleep Generation Rate:</span>
+        <span id="bm-bed-rates" class="modal-stat-val" style="color: #38bdf8;">+2 XP/s • +5 Gold/s</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Next Bed Level:</span>
+        <span id="bm-next-name" class="modal-stat-val">Cozy Spring Bed</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Next Level Generation:</span>
+        <span id="bm-next-rates" class="modal-stat-val" style="color: #22c55e;">+6 XP/s • +14 Gold/s</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Upgrade Cost:</span>
+        <span id="bm-upgrade-cost" class="modal-stat-val" style="color: #eab308;">120 Gold</span>
+      </div>
+      <div class="modal-btn-row">
+        <button id="bm-upgrade-btn" class="modal-action-btn btn-primary">Upgrade Bed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TURRET DEFENSE MODAL -->
+  <div id="turret-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-title">
+        <span>BEDROOM DEFENSE TURRET</span>
+        <button id="tm-close-btn" class="close-modal-btn">✕</button>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Installed Turret:</span>
+        <span id="tm-curr-name" class="modal-stat-val">None</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Next Upgrade:</span>
+        <span id="tm-next-name" class="modal-stat-val">UV Garlic Lantern</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Cost:</span>
+        <span id="tm-cost" class="modal-stat-val" style="color: #eab308;">150 Gold</span>
+      </div>
+      <div class="modal-btn-row">
+        <button id="tm-upgrade-btn" class="modal-action-btn btn-primary">Build / Upgrade Turret</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WAVE CLEARED MODAL -->
+  <div id="wave-cleared-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="text-align: center;">
+      <div id="wc-wave-num" style="font-family: 'Chakra Petch'; font-size: 28px; font-weight: 700; color: #22c55e; margin-bottom: 8px;">WAVE 1 SURVIVED!</div>
+      <p style="color: #94a3b8; font-size: 14px; margin-bottom: 18px;">The morning light pierced the fog and the ghost fled back to the shadows.</p>
+      <div id="wc-reward-text" style="font-family: 'Chakra Petch'; font-size: 20px; font-weight: 700; color: #38bdf8; margin-bottom: 24px;">+100 XP • +180 GOLD</div>
+      <button id="wc-continue-btn" class="menu-btn btn-primary">Continue to Next Wave</button>
+    </div>
+  </div>
+
+  <!-- GAME OVER MODAL -->
+  <div id="game-over-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="text-align: center; border-color: #ef4444;">
+      <div style="font-family: 'Chakra Petch'; font-size: 32px; font-weight: 700; color: #ef4444; margin-bottom: 8px;">YOU DIED</div>
+      <p style="color: #94a3b8; font-size: 14px; margin-bottom: 18px;">The ghost breached your room and overwhelmed you.</p>
+      <div id="go-stats" style="font-family: 'Chakra Petch'; font-size: 16px; color: #f8fafc; margin-bottom: 24px;">Survived up to Wave 1</div>
+      <button id="go-restart-btn" class="menu-btn btn-primary" style="background: #dc2626;">Try Again</button>
+    </div>
+  </div>
+
+  <!-- MOBILE ON-SCREEN TOUCH CONTROLS -->
+  <div id="mobile-controls">
+    <div id="touch-joystick-zone">
+      <div id="touch-joystick-knob"></div>
+    </div>
+
+    <div class="mobile-action-buttons">
+      <button id="m-btn-interact" class="m-btn" title="Interact">E</button>
+      <button id="m-btn-sleep" class="m-btn" title="Sleep">🛏️</button>
+      <button id="m-btn-flashlight" class="m-btn" title="Flashlight">🔦</button>
+    </div>
+  </div>
+
+  <!-- Main Game Script -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

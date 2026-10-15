@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Haunted Dorm 3D - Survival Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Inter:wght@400;600;700&family=VT323&display=swap" rel="stylesheet">
+  <style>*{box-sizing:border-box;-webkit-user-select:none;user-select:none;margin:0;padding:0}body,html{color:#f1f5f9;background-color:#06090e;width:100%;height:100%;font-family:Inter,system-ui,sans-serif;overflow:hidden}#game-canvas{z-index:1;width:100%;height:100%;display:block;position:absolute;top:0;left:0}.hidden{display:none!important}.ui-layer{pointer-events:none;z-index:10;width:100%;height:100%;position:absolute;top:0;left:0}.interactive{pointer-events:auto}button{cursor:pointer;border:none;outline:none;font-family:Chakra Petch,sans-serif;transition:all .15s ease-in-out}button:active{transform:scale(.97)}#loading-overlay{z-index:100;pointer-events:auto;background:radial-gradient(circle,#0f172a 0%,#030712 100%);flex-direction:column;justify-content:center;align-items:center;display:flex;position:absolute;inset:0}.loader-spinner{border:4px solid #1e293b;border-top-color:#38bdf8;border-radius:50%;width:54px;height:54px;margin-bottom:20px;animation:.8s linear infinite spin}@keyframes spin{to{transform:rotate(360deg)}}.loader-title{letter-spacing:3px;color:#38bdf8;text-transform:uppercase;margin-bottom:8px;font-family:Chakra Petch,sans-serif;font-size:26px}#loading-status{color:#94a3b8;font-size:14px}#main-menu{backdrop-filter:blur(10px);z-index:90;pointer-events:auto;background:#030712e0;flex-direction:column;justify-content:center;align-items:center;padding:20px;display:flex;position:absolute;inset:0}.menu-card{text-align:center;background:#0f172af2;border:1px solid #38bdf840;border-radius:16px;width:100%;max-width:580px;padding:36px 44px;box-shadow:0 0 40px #38bdf826}.game-title{letter-spacing:2px;color:#f8fafc;text-shadow:0 0 20px #38bdf880;margin-bottom:6px;font-family:Chakra Petch,sans-serif;font-size:38px;font-weight:700}.game-subtitle{color:#94a3b8;letter-spacing:1px;text-transform:uppercase;margin-bottom:28px;font-size:14px}.menu-btn{letter-spacing:1.5px;text-transform:uppercase;border-radius:10px;width:100%;margin-bottom:14px;padding:15px 20px;font-size:17px;font-weight:600}.btn-primary{color:#fff;background:linear-gradient(135deg,#0284c7,#0369a1);box-shadow:0 4px 15px #0284c766}.btn-primary:hover{background:linear-gradient(135deg,#0ea5e9,#0284c7);box-shadow:0 6px 20px #0ea5e999}.btn-secondary{color:#38bdf8;background:#1e293b;border:1px solid #334155}.btn-secondary:hover{color:#fff;background:#334155}.guide-box{text-align:left;color:#cbd5e1;background:#020617b3;border:1px solid #ffffff14;border-radius:10px;margin-top:22px;padding:16px;font-size:13px;line-height:1.5}.guide-box h4{color:#38bdf8;text-transform:uppercase;margin-bottom:8px;font-family:Chakra Petch,sans-serif;font-size:14px}.guide-item{align-items:flex-start;gap:8px;margin-bottom:6px;display:flex}#hud{pointer-events:none;z-index:20;position:absolute;inset:0}.wave-banner{pointer-events:auto;border:1px solid #ffffff1a;border-radius:30px;align-items:center;gap:12px;padding:10px 24px;font-family:Chakra Petch,sans-serif;font-size:16px;font-weight:600;display:flex;position:absolute;top:16px;left:50%;transform:translate(-50%);box-shadow:0 6px 25px #00000080}.wave-banner.prep{color:#38bdf8;background:#0f172ae0;border-color:#38bdf84d}.wave-banner.alert{color:#fecaca;background:#7f1d1de6;border-color:#ef444499;animation:1.2s infinite alertPulse}@keyframes alertPulse{0%,to{box-shadow:0 0 20px #ef444499}50%{box-shadow:0 0 35px #ef4444e6}}.skip-btn{color:#fff;background:#0284c7;border-radius:14px;padding:4px 12px;font-size:12px;font-weight:700}.top-left-hud{flex-direction:column;gap:10px;display:flex;position:absolute;top:16px;left:20px}.hud-badge{backdrop-filter:blur(8px);background:#0f172ad9;border:1px solid #ffffff1a;border-radius:12px;align-items:center;gap:10px;padding:8px 16px;font-family:Chakra Petch,sans-serif;font-size:15px;font-weight:600;display:flex;box-shadow:0 4px 15px #0006}.badge-icon{font-size:17px}.stat-xp{color:#a855f7}.stat-gold{color:#eab308}.stat-hp{color:#22c55e}.top-right-hud{flex-direction:column;align-items:flex-end;gap:8px;display:flex;position:absolute;top:16px;right:20px}.minimap-container{text-align:center;background:#0f172ae6;border:1px solid #334155;border-radius:12px;padding:8px;box-shadow:0 4px 20px #0009}.minimap-title{letter-spacing:1px;color:#94a3b8;text-transform:uppercase;margin-bottom:4px;font-family:Chakra Petch,sans-serif;font-size:11px}#minimap-canvas{background:#090d16;border-radius:6px;width:140px;height:140px;display:block}.bottom-left-hud{background:#0f172ae6;border:1px solid #ffffff1f;border-radius:14px;width:280px;padding:12px 16px;position:absolute;bottom:24px;left:20px;box-shadow:0 4px 20px #00000080}.door-hud-header{color:#e2e8f0;justify-content:space-between;margin-bottom:6px;font-family:Chakra Petch,sans-serif;font-size:13px;font-weight:600;display:flex}.door-bar-track{background:#1e293b;border-radius:5px;width:100%;height:10px;overflow:hidden}#door-hud-fill{background:#22c55e;width:100%;height:100%;transition:width .2s,background-color .2s}.crosshair{pointer-events:none;background:#ffffffb3;border-radius:50%;width:6px;height:6px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}#interaction-prompt{color:#fff;letter-spacing:.5px;white-space:nowrap;background:#0f172ae0;border:1px solid #38bdf8;border-radius:20px;padding:6px 16px;font-family:Chakra Petch,sans-serif;font-size:14px;font-weight:600;display:none;position:absolute;top:calc(50% + 24px);left:50%;transform:translate(-50%);box-shadow:0 0 15px #38bdf84d}#floating-alert{opacity:0;letter-spacing:1px;pointer-events:none;background:#0f172af2;border:1px solid #ffffff26;border-radius:20px;padding:8px 24px;font-family:Chakra Petch,sans-serif;font-size:16px;font-weight:700;transition:all .3s cubic-bezier(.16,1,.3,1);position:absolute;top:85px;left:50%;transform:translate(-50%)translateY(-20px);box-shadow:0 8px 30px #0009}#floating-alert.visible{opacity:1;transform:translate(-50%)translateY(0)}#sleep-overlay{z-index:25;pointer-events:none;background:radial-gradient(circle,#0f172a66 0%,#020617d9 100%);flex-direction:column;justify-content:flex-end;align-items:center;padding-bottom:80px;display:flex;position:absolute;inset:0}.sleep-card{text-align:center;background:#0f172aeb;border:1px solid #38bdf866;border-radius:16px;padding:16px 28px;box-shadow:0 0 30px #38bdf833}.sleep-title{color:#38bdf8;margin-bottom:4px;font-family:Chakra Petch,sans-serif;font-size:20px;font-weight:700}.sleep-desc{color:#94a3b8;font-size:13px}#cctv-overlay{z-index:30;pointer-events:auto;background:#020408;position:absolute;inset:0;overflow:hidden}.cctv-scanlines{pointer-events:none;z-index:35;background:linear-gradient(#12101000 50%,#00000040 50%) 0 0/100% 3px,linear-gradient(90deg,#ff00000a,#00ff0005,#0000ff0a) 0 0/4px 100%;position:absolute;inset:0}.cctv-vignette{pointer-events:none;z-index:36;position:absolute;inset:0;box-shadow:inset 0 0 100px #000c,inset 0 0 40px #22c55e26}.cctv-header{color:#4ade80;text-shadow:0 0 8px #4ade8099;z-index:40;justify-content:space-between;align-items:center;font-family:VT323,monospace;font-size:24px;display:flex;position:absolute;top:20px;left:24px;right:24px}.rec-indicator{color:#ef4444;align-items:center;gap:8px;display:flex}.rec-dot{background:#ef4444;border-radius:50%;width:12px;height:12px;animation:1s infinite blink}@keyframes blink{50%{opacity:0}}.cctv-controls-bar{z-index:40;background:#0f172ad9;border:1px solid #334155;border-radius:12px;gap:12px;padding:10px 16px;display:flex;position:absolute;bottom:24px;left:50%;transform:translate(-50%)}.cam-btn{color:#f1f5f9;background:#1e293b;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600}.cam-btn:hover{background:#0284c7}.stun-btn{color:#fff;background:linear-gradient(135deg,#0284c7,#0369a1);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700}.repair-btn{color:#fff;background:#15803d;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700}.exit-cctv-btn{color:#fff;background:#dc2626;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700}.modal-overlay{backdrop-filter:blur(8px);z-index:80;pointer-events:auto;background:#030712d9;justify-content:center;align-items:center;padding:20px;display:flex;position:absolute;inset:0}.modal-content{background:#0f172a;border:1px solid #38bdf84d;border-radius:16px;width:100%;max-width:460px;padding:28px;box-shadow:0 10px 40px #000000b3}.modal-title{color:#f8fafc;justify-content:space-between;align-items:center;margin-bottom:16px;font-family:Chakra Petch,sans-serif;font-size:22px;font-weight:700;display:flex}.modal-stat-row{border-bottom:1px solid #ffffff14;justify-content:space-between;padding:10px 0;font-size:14px;display:flex}.modal-stat-label{color:#94a3b8}.modal-stat-val{color:#f8fafc;font-weight:600}.modal-btn-row{gap:12px;margin-top:22px;display:flex}.modal-action-btn{border-radius:10px;flex:1;padding:12px;font-size:14px;font-weight:700}.close-modal-btn{color:#94a3b8;background:0 0;padding:4px;font-size:20px}.form-group{text-align:left;margin-bottom:14px}.form-label{color:#94a3b8;text-transform:uppercase;margin-bottom:6px;font-family:Chakra Petch,sans-serif;font-size:12px;display:block}.form-input{color:#f8fafc;background:#1e293b;border:1px solid #334155;border-radius:8px;outline:none;width:100%;padding:10px 14px;font-family:inherit;font-size:15px}.form-input:focus{border-color:#38bdf8}#chat-panel{z-index:25;pointer-events:auto;background:#0f172ae0;border:1px solid #334155;border-radius:12px;flex-direction:column;width:280px;display:flex;position:absolute;bottom:24px;right:20px;overflow:hidden}.chat-header{color:#38bdf8;background:#1e293b;justify-content:space-between;padding:8px 12px;font-family:Chakra Petch,sans-serif;font-size:12px;font-weight:600;display:flex}#chat-messages{flex-direction:column;gap:4px;height:120px;padding:8px 12px;font-size:12px;display:flex;overflow-y:auto}.chat-msg .sender{color:#38bdf8;font-weight:600}.chat-msg .time{color:#64748b;margin-right:4px;font-size:10px}.chat-msg .text{color:#e2e8f0}.quick-pings-bar{background:#0f172a;border-top:1px solid #1e293b;gap:4px;padding:4px 8px;display:flex}.quick-ping{color:#94a3b8;background:#1e293b;border-radius:4px;flex:1;padding:4px;font-size:10px}.quick-ping:hover{color:#fff;background:#334155}.chat-input-bar{background:#1e293b;padding:6px;display:flex}#chat-input{color:#fff;background:#0f172a;border:1px solid #334155;border-radius:6px;outline:none;flex:1;padding:6px 10px;font-size:12px}#mobile-controls{pointer-events:none;z-index:28;display:none;position:absolute;inset:0}@media (pointer:coarse),(width<=900px){#mobile-controls{display:block}}#touch-joystick-zone{pointer-events:auto;background:#ffffff14;border:2px solid #fff3;border-radius:50%;justify-content:center;align-items:center;width:120px;height:120px;display:flex;position:absolute;bottom:30px;left:30px}#touch-joystick-knob{pointer-events:none;background:#38bdf899;border:2px solid #38bdf8;border-radius:50%;width:50px;height:50px}.mobile-action-buttons{pointer-events:auto;flex-direction:column;gap:12px;display:flex;position:absolute;bottom:30px;right:30px}.m-btn{color:#fff;background:#0f172ad9;border:1px solid #38bdf8;border-radius:50%;justify-content:center;align-items:center;width:54px;height:54px;font-size:20px;display:flex;box-shadow:0 4px 15px #0006}#damage-flash{opacity:0;pointer-events:none;z-index:50;background:#ef4444;transition:opacity .15s ease-out;position:absolute;inset:0}</style>
+  <script type="module" crossorigin src="/assets/index-S8yxBUSQ.js"></script>
+</head>
+<body>
+
+  <!-- WebGL Render Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Damage Screen Flash -->
+  <div id="damage-flash"></div>
+
+  <!-- LOADING SCREEN -->
+  <div id="loading-overlay">
+    <div class="loader-spinner"></div>
+    <div class="loader-title">Haunted Dorm 3D</div>
+    <div id="loading-status">Loading game environment...</div>
+  </div>
+
+  <!-- MAIN MENU -->
+  <div id="main-menu" class="hidden">
+    <div class="menu-card">
+      <h1 class="game-title">HAUNTED DORM 3D</h1>
+      <p class="game-subtitle">First-Person Survival Simulator</p>
+
+      <button id="btn-solo" class="menu-btn btn-primary">Solo Survival</button>
+      <button id="btn-mp" class="menu-btn btn-secondary">Multiplayer (Wi-Fi / LAN / P2P)</button>
+
+      <div class="guide-box">
+        <h4>Survival Directives:</h4>
+        <div class="guide-item">
+          <span>🛏️</span>
+          <span><strong>Sleep in Bed:</strong> Passively earn XP and Gold every second while resting in bed.</span>
+        </div>
+        <div class="guide-item">
+          <span>🚪</span>
+          <span><strong>Fortify Door:</strong> Spend XP & Gold to upgrade and repair the bedroom door.</span>
+        </div>
+        <div class="guide-item">
+          <span>📹</span>
+          <span><strong>CCTV Security:</strong> Use the bedroom monitor to view outside hallway cameras and trigger UV Stun & Remote Repairs!</span>
+        </div>
+        <div class="guide-item">
+          <span>👻</span>
+          <span><strong>Survive Waves:</strong> The ghost attacks every 60s for 20-78s. Hold the door until sunrise!</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MULTIPLAYER P2P MODAL -->
+  <div id="mp-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-title">
+        <span>MULTIPLAYER P2P (LAN / Wi-Fi)</span>
+        <button id="btn-close-mp" class="close-modal-btn">✕</button>
+      </div>
+
+      <!-- Create Section -->
+      <div id="mp-create-section">
+        <h4 style="font-size: 14px; color: #38bdf8; margin-bottom: 12px; text-transform: uppercase;">Host New Server</h4>
+        <div class="form-group">
+          <label class="form-label">Server / Room Name</label>
+          <input id="mp-server-name" class="form-input" type="text" value="Sanctuary Alpha">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Player Capacity</label>
+          <select id="mp-player-size" class="form-input">
+            <option value="2">2 Players</option>
+            <option value="4" selected>4 Players</option>
+            <option value="6">6 Players</option>
+          </select>
+        </div>
+        <button id="btn-create-server" class="menu-btn btn-primary" style="margin-top: 10px;">Create Server (Host)</button>
+
+        <hr style="border: none; border-top: 1px solid #1e293b; margin: 20px 0;">
+
+        <!-- Join Section -->
+        <h4 style="font-size: 14px; color: #38bdf8; margin-bottom: 12px; text-transform: uppercase;">Join Existing Server</h4>
+        <div id="mp-join-section">
+          <div class="form-group">
+            <label class="form-label">Room Code</label>
+            <input id="mp-join-code" class="form-input" type="text" placeholder="e.g. DORM-8291">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Your Name</label>
+            <input id="mp-join-name" class="form-input" type="text" value="Survivor">
+          </div>
+          <button id="btn-join-server" class="menu-btn btn-secondary">Connect to Room</button>
+        </div>
+      </div>
+
+      <!-- Lobby Section (Once created/joined) -->
+      <div id="mp-lobby-section" class="hidden">
+        <div style="background: #030712; padding: 16px; border-radius: 10px; text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 12px; color: #94a3b8;">ROOM CODE (SHARE WITH WI-FI PEERS):</div>
+          <div id="mp-room-code-display" style="font-size: 28px; font-weight: 700; color: #38bdf8; letter-spacing: 3px; font-family: 'Chakra Petch'; margin: 6px 0;">—</div>
+          <div style="font-size: 11px; color: #64748b;">Any device connected to the same Wi-Fi, hotspot, or network can enter this code to join!</div>
+        </div>
+
+        <div id="mp-room-title" style="font-weight: 600; margin-bottom: 6px;">Room Lobby</div>
+        <div id="mp-status-msg" style="font-size: 13px; color: #22c55e; margin-bottom: 16px;">Ready! Waiting for survivors or start now.</div>
+        <button id="mp-start-game-btn" class="menu-btn btn-primary">Start Game Session</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- IN-GAME HUD -->
+  <div id="hud" class="ui-layer hidden">
+
+    <!-- Top Wave Banner -->
+    <div id="wave-banner" class="wave-banner prep">
+      <span>PREPARATION PHASE</span>
+      <strong class="time">60s</strong>
+      <button id="btn-skip-prep" class="skip-btn">⚡ SUMMON EARLY (+25% BONUS)</button>
+    </div>
+
+    <!-- Top Left Player Stats -->
+    <div class="top-left-hud">
+      <div class="hud-badge stat-hp">
+        <span class="badge-icon">❤️</span>
+        <span id="hud-player-hp">100 HP</span>
+      </div>
+      <div class="hud-badge stat-xp">
+        <span class="badge-icon">⚡</span>
+        <span id="hud-xp">0 XP</span>
+      </div>
+      <div class="hud-badge stat-gold">
+        <span class="badge-icon">🪙</span>
+        <span id="hud-gold">50 G</span>
+      </div>
+      <button id="btn-open-bed-modal" class="hud-badge interactive" style="background: #1e293b; color: #38bdf8; cursor: pointer;">
+        <span class="badge-icon">🛏️</span>
+        <span>Upgrade Bed</span>
+      </button>
+    </div>
+
+    <!-- Top Right Minimap Radar -->
+    <div class="top-right-hud">
+      <div class="minimap-container">
+        <div class="minimap-title">HOUSE RADAR</div>
+        <canvas id="minimap-canvas" width="140" height="140"></canvas>
+      </div>
+      <div id="mp-player-count" style="font-size: 12px; color: #94a3b8; font-weight: 600;"></div>
+    </div>
+
+    <!-- Bottom Left Door Status Bar -->
+    <div class="bottom-left-hud">
+      <div class="door-hud-header">
+        <span id="door-hud-text">Lvl 1 Door: 150/150 HP</span>
+      </div>
+      <div class="door-bar-track">
+        <div id="door-hud-fill"></div>
+      </div>
+    </div>
+
+    <!-- Center Reticle & Proximity Prompt -->
+    <div class="crosshair"></div>
+    <div id="interaction-prompt">[E] Inspect</div>
+
+    <!-- Floating Banner Alert -->
+    <div id="floating-alert">WAVE STARTED</div>
+
+    <!-- Sleeping Rest Overlay -->
+    <div id="sleep-overlay" class="hidden">
+      <div class="sleep-card">
+        <div class="sleep-title">💤 SLEEPING IN BED</div>
+        <div class="sleep-desc">Earning passive XP & Gold... Press [E] or [Space] to wake up.</div>
+      </div>
+    </div>
+
+    <!-- Chat Panel (Multiplayer) -->
+    <div id="chat-panel" class="hidden">
+      <div class="chat-header">
+        <span>SURVIVOR COMMS</span>
+        <span>ONLINE</span>
+      </div>
+      <div id="chat-messages">
+        <div class="chat-msg"><span class="sender">System:</span> <span class="text">Welcome to Dorm Survival!</span></div>
+      </div>
+      <div class="quick-pings-bar">
+        <button class="quick-ping" data-msg="⚠️ Ghost at my door!">Ghost!</button>
+        <button class="quick-ping" data-msg="🔧 Need door repairs!">Repair!</button>
+        <button class="quick-ping" data-msg="👍 Survived wave!">Nice!</button>
+      </div>
+      <div class="chat-input-bar">
+        <input id="chat-input" type="text" placeholder="Type message... (Enter)">
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CCTV SECURITY MONITOR OVERLAY -->
+  <div id="cctv-overlay" class="hidden">
+    <div class="cctv-scanlines"></div>
+    <div class="cctv-vignette"></div>
+
+    <div class="cctv-header">
+      <div class="rec-indicator">
+        <div class="rec-dot"></div>
+        <span>REC ● 00:02:45</span>
+      </div>
+      <div id="cctv-cam-title">CAM 01: OUTSIDE BEDROOM DOOR (HALLWAY)</div>
+      <div id="cctv-door-hp">DOOR HP: 150 / 150</div>
+    </div>
+
+    <div class="cctv-controls-bar">
+      <button id="cctv-cam1" class="cam-btn">CAM 01 (Door)</button>
+      <button id="cctv-cam2" class="cam-btn">CAM 02 (Hallway)</button>
+      <button id="cctv-cam3" class="cam-btn">CAM 03 (Living)</button>
+      <button id="cctv-cam4" class="cam-btn">CAM 04 (Attic)</button>
+      <button id="cctv-stun-btn" class="stun-btn">⚡ TRIGGER FLASH STUN</button>
+      <button id="cctv-repair-btn" class="repair-btn">🔧 REMOTE REPAIR (30 G)</button>
+      <button id="cctv-exit-btn" class="exit-cctv-btn">EXIT CCTV [ESC]</button>
+    </div>
+  </div>
+
+  <!-- DOOR UPGRADE / REPAIR MODAL -->
+  <div id="door-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-title">
+        <span>BEDROOM DEFENSE DOOR</span>
+        <button id="dm-close-btn" class="close-modal-btn">✕</button>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Current Door Level:</span>
+        <span id="dm-door-lvl" class="modal-stat-val">Level 1</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Door Integrity (HP):</span>
+        <span id="dm-door-hp" class="modal-stat-val">150 / 150</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Damage Resistance:</span>
+        <span id="dm-door-armor" class="modal-stat-val">0 DEF</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Upgrade Cost:</span>
+        <span id="dm-upgrade-cost" class="modal-stat-val" style="color: #38bdf8;">150 Gold + 40 XP</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Repair Cost (+60 HP):</span>
+        <span id="dm-repair-cost" class="modal-stat-val" style="color: #22c55e;">30 Gold</span>
+      </div>
+      <div class="modal-btn-row">
+        <button id="dm-repair-btn" class="modal-action-btn" style="background: #15803d; color: #ffffff;">Repair Door</button>
+        <button id="dm-upgrade-btn" class="modal-action-btn btn-primary">Upgrade Door</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BED UPGRADE MODAL -->
+  <div id="bed-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-title">
+        <span>BED SANCTUARY</span>
+        <button id="bm-close-btn" class="close-modal-btn">✕</button>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Current Bed:</span>
+        <span id="bm-bed-name" class="modal-stat-val">Creaky Cot</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Sleep Generation Rate:</span>
+        <span id="bm-bed-rates" class="modal-stat-val" style="color: #38bdf8;">+2 XP/s • +5 Gold/s</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Next Bed Level:</span>
+        <span id="bm-next-name" class="modal-stat-val">Cozy Spring Bed</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Next Level Generation:</span>
+        <span id="bm-next-rates" class="modal-stat-val" style="color: #22c55e;">+6 XP/s • +14 Gold/s</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Upgrade Cost:</span>
+        <span id="bm-upgrade-cost" class="modal-stat-val" style="color: #eab308;">120 Gold</span>
+      </div>
+      <div class="modal-btn-row">
+        <button id="bm-upgrade-btn" class="modal-action-btn btn-primary">Upgrade Bed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TURRET DEFENSE MODAL -->
+  <div id="turret-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-title">
+        <span>BEDROOM DEFENSE TURRET</span>
+        <button id="tm-close-btn" class="close-modal-btn">✕</button>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Installed Turret:</span>
+        <span id="tm-curr-name" class="modal-stat-val">None</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Next Upgrade:</span>
+        <span id="tm-next-name" class="modal-stat-val">UV Garlic Lantern</span>
+      </div>
+      <div class="modal-stat-row">
+        <span class="modal-stat-label">Cost:</span>
+        <span id="tm-cost" class="modal-stat-val" style="color: #eab308;">150 Gold</span>
+      </div>
+      <div class="modal-btn-row">
+        <button id="tm-upgrade-btn" class="modal-action-btn btn-primary">Build / Upgrade Turret</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WAVE CLEARED MODAL -->
+  <div id="wave-cleared-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="text-align: center;">
+      <div id="wc-wave-num" style="font-family: 'Chakra Petch'; font-size: 28px; font-weight: 700; color: #22c55e; margin-bottom: 8px;">WAVE 1 SURVIVED!</div>
+      <p style="color: #94a3b8; font-size: 14px; margin-bottom: 18px;">The morning light pierced the fog and the ghost fled back to the shadows.</p>
+      <div id="wc-reward-text" style="font-family: 'Chakra Petch'; font-size: 20px; font-weight: 700; color: #38bdf8; margin-bottom: 24px;">+100 XP • +180 GOLD</div>
+      <button id="wc-continue-btn" class="menu-btn btn-primary">Continue to Next Wave</button>
+    </div>
+  </div>
+
+  <!-- GAME OVER MODAL -->
+  <div id="game-over-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="text-align: center; border-color: #ef4444;">
+      <div style="font-family: 'Chakra Petch'; font-size: 32px; font-weight: 700; color: #ef4444; margin-bottom: 8px;">YOU DIED</div>
+      <p style="color: #94a3b8; font-size: 14px; margin-bottom: 18px;">The ghost breached your room and overwhelmed you.</p>
+      <div id="go-stats" style="font-family: 'Chakra Petch'; font-size: 16px; color: #f8fafc; margin-bottom: 24px;">Survived up to Wave 1</div>
+      <button id="go-restart-btn" class="menu-btn btn-primary" style="background: #dc2626;">Try Again</button>
+    </div>
+  </div>
+
+  <!-- MOBILE ON-SCREEN TOUCH CONTROLS -->
+  <div id="mobile-controls">
+    <div id="touch-joystick-zone">
+      <div id="touch-joystick-knob"></div>
+    </div>
+
+    <div class="mobile-action-buttons">
+      <button id="m-btn-interact" class="m-btn" title="Interact">E</button>
+      <button id="m-btn-sleep" class="m-btn" title="Sleep">🛏️</button>
+      <button id="m-btn-flashlight" class="m-btn" title="Flashlight">🔦</button>
+    </div>
+  </div>
+
+  <!-- Main Game Script -->
+</body>
+</html>
