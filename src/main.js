@@ -11,15 +11,18 @@ import { NetworkManager } from './network.js';
 class Game {
   constructor() {
     this.canvas = document.getElementById('game-canvas');
+
+    // Detect mobile device for optimal FPS
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (window.innerWidth < 900);
+    const pixelRatio = isMobile ? 1.0 : Math.min(window.devicePixelRatio, 1.5);
+
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: true,
+      antialias: !isMobile, // Disable MSAA on mobile for max frame rate
       powerPreference: 'high-performance'
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.setPixelRatio(pixelRatio);
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x06090e);
@@ -35,19 +38,17 @@ class Game {
     this.defenses = new DefenseManager(this.scene, this.house, this.monster);
     this.network = new NetworkManager(this.scene);
 
-    // Game Economy & Wave Progression
+    // Economy & Waves
     this.xp = 0;
-    this.gold = 50; // Starting seed
+    this.gold = 50;
     this.waveLevel = 1;
 
-    // Phases: 'PREP', 'WAVE'
     this.phase = 'PREP';
-    this.prepTimer = 60; // 1 min between waves
+    this.prepTimer = 60;
     this.prepDuration = 60;
-    this.waveTimer = 25; // Wave duration (20s to 78s depending on level)
+    this.waveTimer = 25;
     this.waveDuration = 25;
 
-    // Bed upgrade data
     this.bedUpgrades = [
       { name: 'Creaky Cot', xpRate: 2, goldRate: 5, costGold: 0 },
       { name: 'Cozy Spring Bed', xpRate: 6, goldRate: 14, costGold: 120 },
@@ -56,31 +57,29 @@ class Game {
       { name: 'Cyber Sanctuary Bed', xpRate: 80, goldRate: 180, costGold: 2200 }
     ];
 
-    // Sleep tick accumulator
     this.sleepTickTimer = 0;
-
-    // Clock
+    this.minimapThrottle = 0;
     this.clock = new THREE.Clock();
 
-    // Setup Event Listeners and UI Bindings
     this.setupCallbacks();
     this.setupUI();
     this.setupWindowEvents();
   }
 
   async init() {
-    this.updateLoadingStatus('Constructing haunted dorm architecture...');
-    await this.house.loadAssets();
+    this.updateLoadingStatus('Checking device storage for pre-downloaded 3D assets...');
+    await this.house.loadAssets((msg) => this.updateLoadingStatus(msg));
     this.house.buildHouse();
 
-    this.updateLoadingStatus('Summoning ghostly entity model...');
-    await this.monster.loadModel();
+    this.updateLoadingStatus('Loading ghost monster model...');
+    await this.monster.loadModel((msg) => this.updateLoadingStatus(msg));
 
-    this.updateLoadingStatus('Ready to enter.');
-    document.getElementById('loading-overlay').classList.add('hidden');
-    document.getElementById('main-menu').classList.remove('hidden');
+    this.updateLoadingStatus('⚡ Ready! Stored on device for instant future play.');
+    setTimeout(() => {
+      document.getElementById('loading-overlay').classList.add('hidden');
+      document.getElementById('main-menu').classList.remove('hidden');
+    }, 400);
 
-    // Start render loop
     this.animate();
   }
 
@@ -90,7 +89,6 @@ class Game {
   }
 
   setupCallbacks() {
-    // When player interacts with something (E key or tap)
     this.player.onInteract = (action) => {
       if (action === 'sleep') {
         this.player.sleep();
@@ -104,13 +102,11 @@ class Game {
       }
     };
 
-    // When monster impacts door
     this.monster.onDoorImpact = () => {
       this.player.addScreenShake(0.35);
       this.updateHud();
     };
 
-    // When monster breaches and hits player
     this.monster.onPlayerHit = (damage) => {
       this.player.hp -= damage;
       this.player.addScreenShake(0.7);
@@ -122,7 +118,6 @@ class Game {
       this.updateHud();
     };
 
-    // CCTV callbacks
     this.cctv.onEnter = () => {
       this.player.isUsingCctv = true;
       document.getElementById('cctv-overlay').classList.remove('hidden');
@@ -136,11 +131,10 @@ class Game {
       document.getElementById('hud').classList.remove('hidden');
     };
 
-    this.cctv.onCameraChanged = (camInfo) => {
+    this.cctv.onCameraChanged = () => {
       this.updateCctvUi();
     };
 
-    // Network Callbacks
     this.network.onPlayerCountChanged = (count) => {
       const el = document.getElementById('mp-player-count');
       if (el) el.innerText = `Players in Dorm: ${count}`;
@@ -151,7 +145,6 @@ class Game {
     };
 
     this.network.onStateUpdate = (state) => {
-      // Sync wave state from host
       this.waveLevel = state.waveLevel;
       this.phase = state.phase;
       this.prepTimer = state.prepTimer;
@@ -208,7 +201,7 @@ class Game {
       document.getElementById('mp-lobby-section').classList.remove('hidden');
       document.getElementById('mp-room-code-display').innerText = code;
       document.getElementById('mp-room-title').innerText = 'Connected Room';
-      document.getElementById('mp-status-msg').innerText = 'Waiting for Host to start or exploring dorm...';
+      document.getElementById('mp-status-msg').innerText = 'Ready! Click enter to start exploring.';
       document.getElementById('mp-start-game-btn').innerText = 'Enter Dorm World';
       document.getElementById('mp-start-game-btn').classList.remove('hidden');
     }
@@ -223,9 +216,7 @@ class Game {
   }
 
   calculateWaveDuration(wave) {
-    // Wave duration scales smoothly from 20s up to 78s based on level as requested
-    const dur = 20 + Math.min(58, (wave - 1) * 11);
-    return dur;
+    return 20 + Math.min(58, (wave - 1) * 11);
   }
 
   startMonsterWave() {
@@ -236,18 +227,15 @@ class Game {
     audio.playWaveAlarm();
     this.monster.spawn(this.waveLevel);
 
-    this.showFloatingAlert(`⚠️ WAVE ${this.waveLevel} HAS STARTED! GHOST APPROACHING!`, 'red');
+    this.showFloatingAlert(`⚠️ WAVE ${this.waveLevel} STARTED! GHOST ATTACK!`, 'red');
     this.updateHud();
   }
 
   endMonsterWave() {
     this.phase = 'PREP';
     this.prepTimer = this.prepDuration;
-
-    // Monster retreats back to basement
     this.monster.retreat();
 
-    // Big wave survival rewards!
     const waveXp = 50 + this.waveLevel * 45;
     const waveGold = 100 + this.waveLevel * 85;
     this.xp += waveXp;
@@ -255,8 +243,8 @@ class Game {
 
     audio.playVictoryFanfare();
     confetti({
-      particleCount: 120,
-      spread: 80,
+      particleCount: 100,
+      spread: 70,
       origin: { y: 0.6 }
     });
 
@@ -412,7 +400,7 @@ class Game {
       audio.playUpgradeSound();
       this.updateBedModalUI();
       this.updateHud();
-      this.showFloatingAlert(`Bed upgraded to ${next.name}! Higher income rate!`, 'green');
+      this.showFloatingAlert(`Bed upgraded to ${next.name}!`, 'green');
     }
   }
 
@@ -453,7 +441,7 @@ class Game {
       this.defenses.buildOrUpgrade();
       this.updateTurretModalUI();
       this.updateHud();
-      this.showFloatingAlert(`Defense Turret upgraded! Ready to blast the ghost!`, 'blue');
+      this.showFloatingAlert(`Defense Turret upgraded!`, 'blue');
     }
   }
 
@@ -477,14 +465,10 @@ class Game {
   }
 
   updateHud() {
-    // XP and Gold
     document.getElementById('hud-xp').innerText = `${this.xp} XP`;
     document.getElementById('hud-gold').innerText = `${this.gold} G`;
-
-    // Player HP
     document.getElementById('hud-player-hp').innerText = `${Math.ceil(this.player.hp)} HP`;
 
-    // Wave / Timer banner
     const banner = document.getElementById('wave-banner');
     if (this.phase === 'PREP') {
       banner.className = 'wave-banner prep';
@@ -498,14 +482,12 @@ class Game {
       banner.innerHTML = `<span class="pulse-text">⚠️ GHOST ATTACKING!</span> <strong class="time">${Math.ceil(this.waveTimer)}s</strong>`;
     }
 
-    // Door Health Bar in HUD
     const doorPct = Math.max(0, Math.min(100, (this.house.doorHp / this.house.doorMaxHp) * 100));
     const fill = document.getElementById('door-hud-fill');
     fill.style.width = `${doorPct}%`;
     fill.style.backgroundColor = doorPct > 50 ? '#22c55e' : doorPct > 25 ? '#eab308' : '#ef4444';
     document.getElementById('door-hud-text').innerText = `Lvl ${this.house.doorLevel} Door: ${Math.ceil(this.house.doorHp)}/${this.house.doorMaxHp} HP`;
 
-    // Proximity Prompt
     const promptEl = document.getElementById('interaction-prompt');
     if (this.player.isSleeping) {
       promptEl.innerText = '[E] or [Space] to Wake Up';
@@ -516,9 +498,6 @@ class Game {
     } else {
       promptEl.style.display = 'none';
     }
-
-    // Minimap radar update
-    this.updateMinimap();
   }
 
   updateCctvUi() {
@@ -538,6 +517,7 @@ class Game {
     }
   }
 
+  // Throttled minimap update (runs at 8-10 FPS instead of 60 FPS to prevent canvas lag)
   updateMinimap() {
     const map = document.getElementById('minimap-canvas');
     if (!map) return;
@@ -547,11 +527,9 @@ class Game {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Coordinate mapping: World (-20 to +22 X, -22 to +22 Z) -> Canvas
     const toMapX = (wx) => ((wx + 22) / 44) * w;
     const toMapY = (wz) => ((wz + 24) / 48) * h;
 
-    // Draw rooms
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 1.5;
 
@@ -595,7 +573,7 @@ class Game {
     ctx.arc(toMapX(this.player.position.x), toMapY(this.player.position.z), 4, 0, Math.PI * 2);
     ctx.fill();
 
-    // Monster position dot (Red Ghost Skull)
+    // Monster position dot (Red)
     if (this.monster.mesh && this.monster.mesh.visible) {
       ctx.fillStyle = '#ef4444';
       ctx.beginPath();
@@ -615,7 +593,6 @@ class Game {
   }
 
   setupUI() {
-    // Menu Buttons
     document.getElementById('btn-solo').addEventListener('click', () => this.startSoloGame());
     document.getElementById('btn-mp').addEventListener('click', () => this.openMultiplayerModal());
     document.getElementById('btn-close-mp').addEventListener('click', () => this.closeMultiplayerModal());
@@ -623,27 +600,20 @@ class Game {
     document.getElementById('btn-join-server').addEventListener('click', () => this.handleJoinServer());
     document.getElementById('mp-start-game-btn').addEventListener('click', () => this.startMultiplayerSession());
 
-    // Door modal
     document.getElementById('dm-close-btn').addEventListener('click', () => document.getElementById('door-modal').classList.add('hidden'));
     document.getElementById('dm-upgrade-btn').addEventListener('click', () => this.handleUpgradeDoor());
     document.getElementById('dm-repair-btn').addEventListener('click', () => this.handleRepairDoor());
 
-    // Bed modal
     document.getElementById('bm-close-btn').addEventListener('click', () => document.getElementById('bed-modal').classList.add('hidden'));
     document.getElementById('bm-upgrade-btn').addEventListener('click', () => this.handleUpgradeBed());
     document.getElementById('btn-open-bed-modal').addEventListener('click', () => this.openBedModal());
 
-    // Turret modal
     document.getElementById('tm-close-btn').addEventListener('click', () => document.getElementById('turret-modal').classList.add('hidden'));
     document.getElementById('tm-upgrade-btn').addEventListener('click', () => this.handleUpgradeTurret());
 
-    // Wave cleared modal
     document.getElementById('wc-continue-btn').addEventListener('click', () => this.closeWaveClearedModal());
-
-    // Game over modal
     document.getElementById('go-restart-btn').addEventListener('click', () => this.restartGame());
 
-    // CCTV Controls
     document.getElementById('cctv-cam1').addEventListener('click', () => this.cctv.switchCamera(0));
     document.getElementById('cctv-cam2').addEventListener('click', () => this.cctv.switchCamera(1));
     document.getElementById('cctv-cam3').addEventListener('click', () => this.cctv.switchCamera(2));
@@ -662,7 +632,6 @@ class Game {
       }
     });
 
-    // Chat input
     const chatInput = document.getElementById('chat-input');
     chatInput?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && chatInput.value.trim()) {
@@ -671,7 +640,6 @@ class Game {
       }
     });
 
-    // Quick Alert Buttons
     document.querySelectorAll('.quick-ping').forEach(btn => {
       btn.addEventListener('click', () => {
         const text = btn.getAttribute('data-msg');
@@ -679,7 +647,6 @@ class Game {
       });
     });
 
-    // Mobile Virtual Joystick
     this.setupMobileControls();
   }
 
@@ -736,7 +703,6 @@ class Game {
     window.addEventListener('touchend', endTouch);
     window.addEventListener('touchcancel', endTouch);
 
-    // Mobile buttons
     document.getElementById('m-btn-interact')?.addEventListener('click', () => {
       if (this.player.isSleeping) {
         this.player.wakeUp();
@@ -775,10 +741,8 @@ class Game {
 
     const delta = Math.min(this.clock.getDelta(), 0.1);
 
-    // 1. Update Game Progression
     this.updateGameLogic(delta);
 
-    // 2. Update Systems
     this.house.update(delta);
     this.player.update(delta);
     this.monster.update(delta, this.player.position);
@@ -786,9 +750,8 @@ class Game {
     this.defenses.update(delta);
     this.network.update(delta);
 
-    // Sync player position to multiplayer peers
     this.network.syncInterval += delta;
-    if (this.network.syncInterval > 0.05) {
+    if (this.network.syncInterval > 0.06) {
       this.network.syncInterval = 0;
       this.network.sendPlayerMove(this.player);
 
@@ -804,13 +767,12 @@ class Game {
       }
     }
 
-    // 3. Render Active View (Player Camera or CCTV Camera)
+    // Render active camera
     const activeCamera = this.cctv.active ? this.cctv.camera : this.camera;
     this.renderer.render(this.scene, activeCamera);
   }
 
   updateGameLogic(delta) {
-    // Passive Income when sleeping
     if (this.player.isSleeping) {
       this.sleepTickTimer += delta;
       if (this.sleepTickTimer >= 1.0) {
@@ -823,7 +785,6 @@ class Game {
       }
     }
 
-    // Wave State Machine
     if (this.phase === 'PREP') {
       this.prepTimer -= delta;
       if (this.prepTimer <= 0) {
@@ -836,12 +797,15 @@ class Game {
       }
     }
 
-    // Update HUD timers
-    this.updateHud();
+    // Throttle minimap canvas redraws to ~8 FPS to prevent mobile GPU lag
+    this.minimapThrottle += delta;
+    if (this.minimapThrottle > 0.12) {
+      this.minimapThrottle = 0;
+      this.updateMinimap();
+    }
   }
 }
 
-// Start application
 window.addEventListener('DOMContentLoaded', () => {
   const game = new Game();
   game.init();

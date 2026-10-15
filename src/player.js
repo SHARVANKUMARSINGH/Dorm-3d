@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { audio } from './audio.js';
 
 export class Player {
@@ -7,15 +6,14 @@ export class Player {
     this.camera = camera;
     this.domElement = domElement;
     this.house = house;
-    this.loader = new GLTFLoader();
 
-    // Player position and physics
-    this.position = new THREE.Vector3(14, 1.7, -7); // Spawns inside bedroom
+    // Player position
+    this.position = new THREE.Vector3(14, 1.7, -7); // In bedroom
     this.velocity = new THREE.Vector3();
     this.camera.position.copy(this.position);
 
     this.pitch = 0;
-    this.yaw = -Math.PI / 2; // Face towards the bedroom door
+    this.yaw = -Math.PI / 2; // Face bedroom door
     this.updateCameraRotation();
 
     // Stats
@@ -23,16 +21,16 @@ export class Player {
     this.maxHp = 100;
     this.isDead = false;
 
-    // Movement speeds
-    this.walkSpeed = 3.8;
-    this.sprintSpeed = 5.8;
+    // Speeds
+    this.walkSpeed = 4.0;
+    this.sprintSpeed = 6.0;
     this.jumpForce = 4.8;
     this.gravity = 14.0;
     this.isGrounded = true;
 
     // State
     this.isSleeping = false;
-    this.sleepTargetPos = new THREE.Vector3(16.0, 1.0, -6.0);
+    this.sleepTargetPos = new THREE.Vector3(16.0, 0.9, -6.0);
     this.standPos = new THREE.Vector3(14.5, 1.7, -6.5);
     this.sleepLerp = 0;
 
@@ -48,10 +46,18 @@ export class Player {
     this.isLocked = false;
     this.touchJoystick = { x: 0, y: 0, active: false };
 
+    // Camera look touch tracking
+    this.touchLookId = null;
+    this.lastTouchLookX = 0;
+    this.lastTouchLookY = 0;
+
+    // Mouse drag tracking (fallback when pointer lock is not engaged)
+    this.isMouseDown = false;
+    this.lastMouseX = 0;
+    this.lastMouseY = 0;
+
     // Interaction
     this.currentInteractive = null;
-
-    // Footstep timer
     this.footstepTimer = 0;
 
     this.setupInputs();
@@ -96,10 +102,12 @@ export class Player {
       this.keys[e.code] = false;
     });
 
-    // Pointer Lock
+    // Pointer Lock for Desktop
     this.domElement.addEventListener('click', () => {
-      if (!this.isLocked && !this.isUsingCctv) {
-        this.domElement.requestPointerLock?.();
+      if (!this.isLocked && !this.isUsingCctv && !this.isSleeping) {
+        try {
+          this.domElement.requestPointerLock?.();
+        } catch (e) {}
       }
     });
 
@@ -107,14 +115,93 @@ export class Player {
       this.isLocked = document.pointerLockElement === this.domElement;
     });
 
-    document.addEventListener('mousemove', (e) => {
-      if (!this.isLocked || this.isSleeping || this.isUsingCctv) return;
-      const sensitivity = 0.0022;
-      this.yaw -= e.movementX * sensitivity;
-      this.pitch -= e.movementY * sensitivity;
-      this.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.pitch));
-      this.updateCameraRotation();
+    // Mouse Look (with Pointer Lock & Drag Fallback)
+    window.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button, .modal-content, input, select, .quick-ping')) return;
+      this.isMouseDown = true;
+      this.lastMouseX = e.clientX;
+      this.lastMouseY = e.clientY;
     });
+
+    window.addEventListener('mousemove', (e) => {
+      if (this.isSleeping || this.isUsingCctv) return;
+
+      if (this.isLocked) {
+        const sensitivity = 0.0022;
+        this.yaw -= e.movementX * sensitivity;
+        this.pitch -= e.movementY * sensitivity;
+        this.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.pitch));
+        this.updateCameraRotation();
+      } else if (this.isMouseDown) {
+        const dx = e.clientX - this.lastMouseX;
+        const dy = e.clientY - this.lastMouseY;
+        this.lastMouseX = e.clientX;
+        this.lastMouseY = e.clientY;
+
+        const sensitivity = 0.0035;
+        this.yaw -= dx * sensitivity;
+        this.pitch -= dy * sensitivity;
+        this.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.pitch));
+        this.updateCameraRotation();
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      this.isMouseDown = false;
+    });
+
+    // TOUCH CAMERA DRAG LOOK (FOR MOBILE & TABLET!)
+    window.addEventListener('touchstart', (e) => {
+      if (this.isSleeping || this.isUsingCctv) return;
+
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        
+        // Skip joystick zone and buttons
+        if (target && target.closest('#touch-joystick-zone, button, .modal-content, input, select, .m-btn')) {
+          continue;
+        }
+
+        // If touch is on right 70% or upper screen, use for camera look!
+        if (this.touchLookId === null) {
+          this.touchLookId = touch.identifier;
+          this.lastTouchLookX = touch.clientX;
+          this.lastTouchLookY = touch.clientY;
+        }
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (this.isSleeping || this.isUsingCctv || this.touchLookId === null) return;
+
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === this.touchLookId) {
+          const dx = touch.clientX - this.lastTouchLookX;
+          const dy = touch.clientY - this.lastTouchLookY;
+          this.lastTouchLookX = touch.clientX;
+          this.lastTouchLookY = touch.clientY;
+
+          const touchSensitivity = 0.0045;
+          this.yaw -= dx * touchSensitivity;
+          this.pitch -= dy * touchSensitivity;
+          this.pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.pitch));
+          this.updateCameraRotation();
+        }
+      }
+    }, { passive: true });
+
+    const endTouchLook = (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === this.touchLookId) {
+          this.touchLookId = null;
+        }
+      }
+    };
+
+    window.addEventListener('touchend', endTouchLook, { passive: true });
+    window.addEventListener('touchcancel', endTouchLook, { passive: true });
   }
 
   updateCameraRotation() {
@@ -140,11 +227,9 @@ export class Player {
   update(delta) {
     if (this.isDead) return;
 
-    // Handle sleeping animation & transition
     if (this.isSleeping) {
       this.sleepLerp = THREE.MathUtils.lerp(this.sleepLerp, 1.0, delta * 4);
       this.camera.position.lerpVectors(this.standPos, this.sleepTargetPos, this.sleepLerp);
-      // Face towards ceiling and bedroom door
       this.pitch = THREE.MathUtils.lerp(this.pitch, 0.1, delta * 4);
       this.yaw = THREE.MathUtils.lerp(this.yaw, -Math.PI / 2, delta * 4);
       this.updateCameraRotation();
@@ -157,7 +242,6 @@ export class Player {
 
     if (this.isUsingCctv) return;
 
-    // Movement calculation
     const isSprinting = (this.keys['ShiftLeft'] || this.keys['ShiftRight']) && !this.touchJoystick.active;
     const currentSpeed = isSprinting ? this.sprintSpeed : this.walkSpeed;
 
@@ -167,7 +251,6 @@ export class Player {
     if (this.keys['KeyA'] || this.keys['ArrowLeft']) moveVector.x -= 1;
     if (this.keys['KeyD'] || this.keys['ArrowRight']) moveVector.x += 1;
 
-    // Mobile joystick input
     if (this.touchJoystick.active) {
       moveVector.x += this.touchJoystick.x;
       moveVector.z -= this.touchJoystick.y;
@@ -176,7 +259,6 @@ export class Player {
     if (moveVector.lengthSq() > 0) {
       moveVector.normalize();
 
-      // Transform by camera yaw
       const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
       const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
 
@@ -188,7 +270,6 @@ export class Player {
       this.velocity.x = targetVel.x;
       this.velocity.z = targetVel.z;
 
-      // Footstep sound
       this.footstepTimer += delta * (isSprinting ? 1.6 : 1.0);
       if (this.footstepTimer > 0.45 && this.isGrounded) {
         this.footstepTimer = 0;
@@ -199,7 +280,6 @@ export class Player {
       this.velocity.z = 0;
     }
 
-    // Jump & Gravity
     if (this.keys['Space'] && this.isGrounded) {
       this.velocity.y = this.jumpForce;
       this.isGrounded = false;
@@ -209,10 +289,8 @@ export class Player {
       this.velocity.y -= this.gravity * delta;
     }
 
-    // Apply movement with wall collision detection
     this.moveWithCollision(delta);
 
-    // Apply screen shake
     if (this.screenShakeIntensity > 0) {
       this.screenShakeIntensity -= delta * 1.5;
       const shakeAmt = Math.max(0, this.screenShakeIntensity) * 0.12;
@@ -223,7 +301,6 @@ export class Player {
       this.camera.position.copy(this.position);
     }
 
-    // Check Proximity Prompts
     this.checkInteractiveObjects();
   }
 
@@ -231,7 +308,6 @@ export class Player {
     const playerRadius = 0.35;
     const playerHeight = 1.7;
 
-    // Test X movement
     const nextX = this.position.x + this.velocity.x * delta;
     let collideX = false;
     const playerBoxX = new THREE.Box3(
@@ -247,7 +323,6 @@ export class Player {
     }
     if (!collideX) this.position.x = nextX;
 
-    // Test Z movement
     const nextZ = this.position.z + this.velocity.z * delta;
     let collideZ = false;
     const playerBoxZ = new THREE.Box3(
@@ -263,7 +338,6 @@ export class Player {
     }
     if (!collideZ) this.position.z = nextZ;
 
-    // Y movement & Floor
     this.position.y += this.velocity.y * delta;
     if (this.position.y <= 1.7) {
       this.position.y = 1.7;

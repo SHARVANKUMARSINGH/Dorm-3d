@@ -1,19 +1,19 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { AssetCache } from './assetCache.js';
 
 export class House {
   constructor(scene) {
     this.scene = scene;
     this.loader = new GLTFLoader();
-    this.colliders = []; // Bounding boxes for player & monster collision
-    this.interactiveObjects = []; // Objects with proximity prompts
+    this.colliders = [];
+    this.interactiveObjects = [];
     this.doors = [];
     this.loadedModels = {};
 
     // Door data
     this.bedroomDoor = null;
     this.doorMesh = null;
-    this.doorFrame = null;
     this.doorHp = 150;
     this.doorMaxHp = 150;
     this.doorLevel = 1;
@@ -21,52 +21,52 @@ export class House {
     this.isDoorBroken = false;
     this.doorShaking = 0;
 
-    // Bed data
+    // Bed data - Ground level (Y = 0)
     this.bedMesh = null;
     this.bedLevel = 1;
-    this.bedPosition = new THREE.Vector3(16, 0.6, -6);
+    this.bedPosition = new THREE.Vector3(16, 0, -6);
 
-    // CCTV desk data
+    // CCTV desk data - Ground level (Y = 0)
     this.cctvDeskMesh = null;
-    this.cctvPosition = new THREE.Vector3(13, 0.8, -10);
+    this.cctvPosition = new THREE.Vector3(13, 0, -9.5);
 
-    // Turret pad data
-    this.turretPadPosition = new THREE.Vector3(14.5, 0.05, -3);
+    // Turret pad data - Ground level (Y = 0.04)
+    this.turretPadPosition = new THREE.Vector3(14.5, 0.04, -3);
 
-    // Cameras positions for CCTV system
+    // CCTV Cameras
     this.cctvCameraPositions = [
       {
         id: 1,
         name: 'CAM 01: OUTSIDE BEDROOM DOOR (HALLWAY)',
-        pos: new THREE.Vector3(9.2, 2.7, -4.5),
-        target: new THREE.Vector3(10.2, 1.4, -4.5),
+        pos: new THREE.Vector3(9.2, 2.5, -4.5),
+        target: new THREE.Vector3(10.2, 1.3, -4.5),
         fov: 75
       },
       {
         id: 2,
         name: 'CAM 02: CENTRAL HALLWAY & BASEMENT',
-        pos: new THREE.Vector3(0, 3.2, 9),
+        pos: new THREE.Vector3(0, 3.0, 9),
         target: new THREE.Vector3(0, 0.5, 14),
         fov: 80
       },
       {
         id: 3,
         name: 'CAM 03: LIVING ROOM & LIBRARY',
-        pos: new THREE.Vector3(4.5, 3.0, 3.5),
+        pos: new THREE.Vector3(4.5, 2.8, 3.5),
         target: new THREE.Vector3(9.0, 1.0, 5.0),
         fov: 80
       },
       {
         id: 4,
         name: 'CAM 04: ATTIC & ENTRANCE',
-        pos: new THREE.Vector3(0, 3.2, -9),
+        pos: new THREE.Vector3(0, 3.0, -9),
         target: new THREE.Vector3(0, 0.8, -15),
         fov: 80
       }
     ];
   }
 
-  async loadAssets() {
+  async loadAssets(onStatus) {
     const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + '/';
     const assetsToLoad = [
       { key: 'door', url: base + 'models/doorWood.glb' },
@@ -85,7 +85,10 @@ export class House {
 
     for (const item of assetsToLoad) {
       try {
-        const gltf = await this.loadGLTF(item.url);
+        const buffer = await AssetCache.loadArrayBuffer(item.url, onStatus);
+        const gltf = await new Promise((resolve, reject) => {
+          this.loader.parse(buffer, '', resolve, reject);
+        });
         this.loadedModels[item.key] = gltf.scene;
       } catch (err) {
         console.warn(`Could not load ${item.url}, using procedural fallback:`, err);
@@ -93,50 +96,18 @@ export class House {
     }
   }
 
-  loadGLTF(url) {
-    return new Promise((resolve, reject) => {
-      this.loader.load(url, resolve, undefined, reject);
-    });
-  }
-
   buildHouse() {
-    // Materials
-    const floorWoodMat = new THREE.MeshStandardMaterial({
-      color: 0x4a3728,
-      roughness: 0.7,
-      metalness: 0.1
-    });
-
-    const floorTileMat = new THREE.MeshStandardMaterial({
-      color: 0x2e353b,
-      roughness: 0.5,
-      metalness: 0.2
-    });
-
-    const floorStoneMat = new THREE.MeshStandardMaterial({
-      color: 0x222225,
-      roughness: 0.9,
-      metalness: 0.05
-    });
-
-    const wallPlasterMat = new THREE.MeshStandardMaterial({
-      color: 0x5a544c,
-      roughness: 0.85
-    });
-
-    const wallBedroomMat = new THREE.MeshStandardMaterial({
-      color: 0x3d4745,
-      roughness: 0.8
-    });
-
-    const ceilingMat = new THREE.MeshStandardMaterial({
-      color: 0x2b2927,
-      roughness: 0.9
-    });
+    // Optimized materials with lower roughness calculations for smooth FPS
+    const floorWoodMat = new THREE.MeshLambertMaterial({ color: 0x423225 });
+    const floorTileMat = new THREE.MeshLambertMaterial({ color: 0x2b3137 });
+    const floorStoneMat = new THREE.MeshLambertMaterial({ color: 0x1f1f22 });
+    const wallPlasterMat = new THREE.MeshLambertMaterial({ color: 0x524c44 });
+    const wallBedroomMat = new THREE.MeshLambertMaterial({ color: 0x38413f });
+    const ceilingMat = new THREE.MeshLambertMaterial({ color: 0x262422 });
 
     const houseGroup = new THREE.Group();
 
-    // 1. HALLWAY: Central Corridor (Z: -12 to +12, X: -3 to +3)
+    // 1. HALLWAY: Central Corridor
     this.createRoom({
       group: houseGroup,
       x: 0, z: 0,
@@ -144,7 +115,6 @@ export class House {
       floorMat: floorWoodMat,
       wallMat: wallPlasterMat,
       ceilingMat: ceilingMat,
-      name: 'Hallway',
       openings: [
         { wall: 'north', offset: 0, width: 2.4 }, // to Attic
         { wall: 'south', offset: 0, width: 2.6 }, // to Basement
@@ -154,7 +124,7 @@ export class House {
       ]
     });
 
-    // 2. ATTIC: North of Hallway (Z: -12 to -22, X: -4 to +4)
+    // 2. ATTIC: North of Hallway
     this.createRoom({
       group: houseGroup,
       x: 0, z: -17,
@@ -162,27 +132,21 @@ export class House {
       floorMat: floorWoodMat,
       wallMat: wallPlasterMat,
       ceilingMat: ceilingMat,
-      name: 'Attic',
-      openings: [
-        { wall: 'south', offset: 0, width: 2.4 }
-      ]
+      openings: [{ wall: 'south', offset: 0, width: 2.4 }]
     });
 
-    // 3. BASEMENT: South of Hallway (Z: +12 to +22, X: -4 to +4) - where monster spawns
+    // 3. BASEMENT: South of Hallway (Monster Spawn)
     this.createRoom({
       group: houseGroup,
       x: 0, z: 17,
       width: 8, depth: 10, height: 3.5,
       floorMat: floorStoneMat,
-      wallMat: wallStoneMatProcedural(),
+      wallMat: new THREE.MeshLambertMaterial({ color: 0x242426 }),
       ceilingMat: ceilingMat,
-      name: 'Basement',
-      openings: [
-        { wall: 'north', offset: 0, width: 2.6 }
-      ]
+      openings: [{ wall: 'north', offset: 0, width: 2.6 }]
     });
 
-    // 4. KITCHEN: West of Hallway (X: -3 to -11, Z: -1 to +7)
+    // 4. KITCHEN: West of Hallway
     this.createRoom({
       group: houseGroup,
       x: -7, z: 3,
@@ -190,14 +154,13 @@ export class House {
       floorMat: floorTileMat,
       wallMat: wallPlasterMat,
       ceilingMat: ceilingMat,
-      name: 'Kitchen',
       openings: [
         { wall: 'east', offset: 0, width: 2.4 },
-        { wall: 'west', offset: 0, width: 2.0 } // to Pantry
+        { wall: 'west', offset: 0, width: 2.0 }
       ]
     });
 
-    // 5. PANTRY: West of Kitchen (X: -11 to -18, Z: -1 to +7)
+    // 5. PANTRY: West of Kitchen
     this.createRoom({
       group: houseGroup,
       x: -14.5, z: 3,
@@ -205,13 +168,10 @@ export class House {
       floorMat: floorTileMat,
       wallMat: wallPlasterMat,
       ceilingMat: ceilingMat,
-      name: 'Pantry',
-      openings: [
-        { wall: 'east', offset: 0, width: 2.0 }
-      ]
+      openings: [{ wall: 'east', offset: 0, width: 2.0 }]
     });
 
-    // 6. LIVING ROOM: East of Hallway (X: +3 to +12, Z: 0 to +8)
+    // 6. LIVING ROOM: East of Hallway
     this.createRoom({
       group: houseGroup,
       x: 7.5, z: 4,
@@ -219,14 +179,13 @@ export class House {
       floorMat: floorWoodMat,
       wallMat: wallPlasterMat,
       ceilingMat: ceilingMat,
-      name: 'Living Room',
       openings: [
         { wall: 'west', offset: 0, width: 2.8 },
-        { wall: 'north', offset: 0, width: 2.4 } // to Library
+        { wall: 'north', offset: 0, width: 2.4 }
       ]
     });
 
-    // 7. LIBRARY: North of Living Room (X: +3 to +10, Z: -10 to 0)
+    // 7. LIBRARY: North of Living Room
     this.createRoom({
       group: houseGroup,
       x: 6.5, z: -5,
@@ -234,15 +193,14 @@ export class House {
       floorMat: floorWoodMat,
       wallMat: wallPlasterMat,
       ceilingMat: ceilingMat,
-      name: 'Library',
       openings: [
-        { wall: 'west', offset: -1, width: 2.4 }, // to Hallway
-        { wall: 'south', offset: 1, width: 2.4 }, // to Living Room
-        { wall: 'east', offset: 0.5, width: 2.2 } // Doorway into Bedroom!
+        { wall: 'west', offset: -1, width: 2.4 },
+        { wall: 'south', offset: 1, width: 2.4 },
+        { wall: 'east', offset: 0.5, width: 2.2 }
       ]
     });
 
-    // 8. BEDROOM: East of Library (X: +10 to +22, Z: -11 to 0) - PLAYER FORTIFIED ROOM!
+    // 8. BEDROOM: East of Library (Player's Sanctuary)
     this.createRoom({
       group: houseGroup,
       x: 16, z: -5.5,
@@ -250,36 +208,30 @@ export class House {
       floorMat: floorWoodMat,
       wallMat: wallBedroomMat,
       ceilingMat: ceilingMat,
-      name: 'Bedroom',
-      openings: [
-        { wall: 'west', offset: 1.0, width: 2.2 } // The Main Fortified Door
-      ]
+      openings: [{ wall: 'west', offset: 1.0, width: 2.2 }]
     });
 
     this.scene.add(houseGroup);
 
-    // Setup the Fortified Bedroom Door
+    // Setup Bedroom Door
     this.setupBedroomDoor();
 
-    // Populate rooms with furniture & props
+    // Populate Props with Ground-Alignment
     this.populateProps();
 
-    // Setup Lights
+    // Setup Optimized Lighting
     this.setupHouseLighting();
   }
 
-  // Setup the Fortified Bedroom Door
   setupBedroomDoor() {
     const doorGroup = new THREE.Group();
-    // Doorway is on the west wall of Bedroom at X = 10, Z = -4.5
     doorGroup.position.set(10.0, 0, -4.5);
 
     // Frame
-    const frameGeo = new THREE.BoxGeometry(0.3, 2.7, 0.2);
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x221811, roughness: 0.8 });
-    const frameLeft = new THREE.Mesh(frameGeo, frameMat);
+    const frameMat = new THREE.MeshLambertMaterial({ color: 0x1f160f });
+    const frameLeft = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.7, 0.2), frameMat);
     frameLeft.position.set(0, 1.35, -1.05);
-    const frameRight = new THREE.Mesh(frameGeo, frameMat);
+    const frameRight = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.7, 0.2), frameMat);
     frameRight.position.set(0, 1.35, 1.05);
     const frameTop = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 2.3), frameMat);
     frameTop.position.set(0, 2.7, 0);
@@ -288,26 +240,15 @@ export class House {
     doorGroup.add(frameRight);
     doorGroup.add(frameTop);
 
-    // Door Slab
+    // Door Slab with Ground Alignment
     let doorMesh;
     if (this.loadedModels.door) {
-      doorMesh = this.loadedModels.door.clone();
-      // Fit to door frame dimensions
-      const box = new THREE.Box3().setFromObject(doorMesh);
-      const size = new THREE.Vector3();
-      box.getSize(size);
-      const targetHeight = 2.6;
-      const scale = targetHeight / (size.y || 1);
-      doorMesh.scale.set(scale, scale, scale);
-      doorMesh.position.set(0, 0, 0);
+      const grounded = groundAndScale(this.loadedModels.door.clone(), 2.6);
+      doorMesh = grounded;
       doorMesh.rotation.y = Math.PI / 2;
     } else {
       const doorGeo = new THREE.BoxGeometry(0.12, 2.6, 2.0);
-      const woodMat = new THREE.MeshStandardMaterial({
-        color: 0x6e4321,
-        roughness: 0.6,
-        metalness: 0.1
-      });
+      const woodMat = new THREE.MeshLambertMaterial({ color: 0x6e4321 });
       doorMesh = new THREE.Mesh(doorGeo, woodMat);
       doorMesh.position.set(0, 1.3, 0);
     }
@@ -318,10 +259,8 @@ export class House {
     this.bedroomDoor = doorGroup;
     this.doorMesh = doorMesh;
 
-    // Add floating 3D health bar canvas sprite over the door
     this.createDoorHealthSprite(doorGroup);
 
-    // Interactive prompt trigger for door
     this.interactiveObjects.push({
       name: 'Door',
       position: new THREE.Vector3(11.2, 1.3, -4.5),
@@ -330,7 +269,6 @@ export class House {
       action: 'door'
     });
 
-    // Add door collider box
     const doorBox = new THREE.Box3(
       new THREE.Vector3(9.8, 0, -5.6),
       new THREE.Vector3(10.2, 3.0, -3.4)
@@ -364,32 +302,26 @@ export class House {
     const ctx = this.doorSpriteCtx;
     ctx.clearRect(0, 0, 256, 64);
 
-    // Background pill
-    ctx.fillStyle = 'rgba(10, 12, 18, 0.85)';
+    ctx.fillStyle = 'rgba(10, 12, 18, 0.88)';
     ctx.roundRect ? ctx.roundRect(8, 8, 240, 48, 8) : ctx.fillRect(8, 8, 240, 48);
     ctx.fill();
 
-    // Border
     ctx.strokeStyle = '#445566';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Door Title & Level
     ctx.font = 'bold 15px system-ui, sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.fillText(`LVL ${this.doorLevel} DOOR`, 20, 27);
 
-    // Health percentage
     const pct = Math.max(0, Math.min(1, this.doorHp / this.doorMaxHp));
     ctx.font = 'bold 13px system-ui, sans-serif';
     ctx.fillStyle = pct > 0.5 ? '#4ade80' : pct > 0.25 ? '#facc15' : '#ef4444';
     ctx.fillText(`${Math.ceil(this.doorHp)}/${this.doorMaxHp}`, 165, 27);
 
-    // Health bar background
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(20, 34, 216, 14);
 
-    // Health bar fill
     ctx.fillStyle = pct > 0.5 ? '#22c55e' : pct > 0.25 ? '#eab308' : '#dc2626';
     ctx.fillRect(20, 34, 216 * pct, 14);
 
@@ -412,16 +344,11 @@ export class House {
       this.doorArmor = up.armor;
       this.isDoorBroken = false;
 
-      // Update material color of door
       if (this.doorMesh) {
         this.doorMesh.traverse(child => {
           if (child.isMesh && child.material) {
             child.material = child.material.clone();
             child.material.color.setHex(up.color);
-            if (this.doorLevel >= 3) {
-              child.material.metalness = 0.7;
-              child.material.roughness = 0.3;
-            }
           }
         });
       }
@@ -443,7 +370,7 @@ export class House {
     if (this.isDoorBroken) return;
     const effectiveDamage = Math.max(3, amount - this.doorArmor);
     this.doorHp = Math.max(0, this.doorHp - effectiveDamage);
-    this.doorShaking = 0.35; // Trigger door vibration
+    this.doorShaking = 0.35;
     this.updateDoorHealthSprite();
 
     if (this.doorHp <= 0) {
@@ -455,42 +382,35 @@ export class House {
     this.isDoorBroken = true;
     this.doorHp = 0;
     this.updateDoorHealthSprite();
-    // Rotate door open or push outward
     if (this.doorMesh) {
       this.doorMesh.rotation.y = Math.PI * 0.9;
       this.doorMesh.position.x = 0.8;
     }
-    // Remove collider so monster and player can walk through
     const idx = this.colliders.indexOf(this.doorCollider);
     if (idx !== -1) {
       this.colliders.splice(idx, 1);
     }
   }
 
-  // Populate props in rooms
   populateProps() {
     const propsGroup = new THREE.Group();
 
-    // 1. BED in Bedroom (Sanctuary)
+    // 1. BED in Bedroom (Sanctuary) - Grounded at Y = 0
     if (this.loadedModels.bed) {
-      const bed = this.loadedModels.bed.clone();
-      fitModel(bed, 1.4); // Target height ~1.4m
+      const bed = groundAndScale(this.loadedModels.bed.clone(), 1.3);
       bed.position.copy(this.bedPosition);
-      bed.position.y = 0;
       bed.rotation.y = -Math.PI / 2;
       propsGroup.add(bed);
       this.bedMesh = bed;
     } else {
-      // Procedural bed
       const bedGeo = new THREE.BoxGeometry(2.2, 0.7, 3.0);
-      const bedMat = new THREE.MeshStandardMaterial({ color: 0x8b0000, roughness: 0.7 });
+      const bedMat = new THREE.MeshLambertMaterial({ color: 0x8b0000 });
       const bed = new THREE.Mesh(bedGeo, bedMat);
-      bed.position.copy(this.bedPosition);
+      bed.position.set(this.bedPosition.x, 0.35, this.bedPosition.z);
       propsGroup.add(bed);
       this.bedMesh = bed;
     }
 
-    // Add Bed proximity prompt
     this.interactiveObjects.push({
       name: 'Bed',
       position: this.bedPosition.clone(),
@@ -499,48 +419,49 @@ export class House {
       action: 'sleep'
     });
 
-    // 2. CCTV MONITOR DESK in Bedroom
+    // 2. CCTV MONITOR DESK in Bedroom - Grounded at Y = 0
     const deskGroup = new THREE.Group();
     deskGroup.position.copy(this.cctvPosition);
 
+    let deskSurfaceY = 0.75;
     if (this.loadedModels.table) {
-      const table = this.loadedModels.table.clone();
-      fitModel(table, 0.85);
+      const table = groundAndScale(this.loadedModels.table.clone(), 0.8);
       deskGroup.add(table);
+      deskSurfaceY = 0.8;
     } else {
-      const t = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 1.0), new THREE.MeshStandardMaterial({ color: 0x332211 }));
-      t.position.y = 0.4;
+      const t = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.75, 1.0), new THREE.MeshLambertMaterial({ color: 0x332211 }));
+      t.position.y = 0.375;
       deskGroup.add(t);
+      deskSurfaceY = 0.75;
     }
 
-    // Computer / Monitor on table
+    // Monitor sitting directly on the desk top facing South (+Z) towards player/chair
     if (this.loadedModels.tv) {
-      const tv = this.loadedModels.tv.clone();
-      fitModel(tv, 0.65);
-      tv.position.set(0, 0.85, 0);
-      tv.rotation.y = Math.PI;
+      const tv = groundAndScale(this.loadedModels.tv.clone(), 0.65);
+      tv.position.set(0, deskSurfaceY, 0);
+      tv.rotation.y = 0; // Screen faces +Z towards chair & player!
       deskGroup.add(tv);
     }
 
-    // Glowing green CCTV screen mesh
-    const screenGeo = new THREE.PlaneGeometry(0.5, 0.35);
+    // Glowing CCTV terminal screen facing +Z towards player
+    const screenGeo = new THREE.PlaneGeometry(0.44, 0.3);
     const screenMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
     const screen = new THREE.Mesh(screenGeo, screenMat);
-    screen.position.set(0, 1.18, 0.22);
+    screen.position.set(0, deskSurfaceY + 0.28, 0.12);
+    screen.rotation.y = 0;
     deskGroup.add(screen);
 
-    // Chair
+    // Chair placed in front of desk facing North (-Z) towards desk & monitor
     if (this.loadedModels.chair) {
-      const chair = this.loadedModels.chair.clone();
-      fitModel(chair, 0.9);
-      chair.position.set(0, 0, 0.8);
+      const chair = groundAndScale(this.loadedModels.chair.clone(), 0.88);
+      chair.position.set(0, 0, 0.75);
+      chair.rotation.y = Math.PI; // Faces desk and monitor!
       deskGroup.add(chair);
     }
 
     propsGroup.add(deskGroup);
     this.cctvDeskMesh = deskGroup;
 
-    // Add CCTV proximity prompt
     this.interactiveObjects.push({
       name: 'CCTV Console',
       position: this.cctvPosition.clone().add(new THREE.Vector3(0, 0, 0.8)),
@@ -549,20 +470,13 @@ export class House {
       action: 'cctv'
     });
 
-    // 3. DEFENSE TURRET PAD in Bedroom
+    // 3. DEFENSE TURRET PAD
     const padGeo = new THREE.CylinderGeometry(0.9, 1.0, 0.08, 16);
-    const padMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7,
-      metalness: 0.6,
-      roughness: 0.3,
-      emissive: 0x0369a1,
-      emissiveIntensity: 0.3
-    });
+    const padMat = new THREE.MeshLambertMaterial({ color: 0x0284c7 });
     const turretPad = new THREE.Mesh(padGeo, padMat);
     turretPad.position.copy(this.turretPadPosition);
     propsGroup.add(turretPad);
 
-    // Turret Pad prompt
     this.interactiveObjects.push({
       name: 'Defense Pad',
       position: this.turretPadPosition.clone(),
@@ -571,57 +485,51 @@ export class House {
       action: 'turret'
     });
 
-    // 4. LIVING ROOM PROPS (Couch, Table, Bookshelf, Plant)
+    // 4. LIVING ROOM PROPS (Grounded on floor)
     if (this.loadedModels.couch) {
-      const couch = this.loadedModels.couch.clone();
-      fitModel(couch, 1.1);
+      const couch = groundAndScale(this.loadedModels.couch.clone(), 1.1);
       couch.position.set(7.5, 0, 6.0);
       couch.rotation.y = Math.PI;
       propsGroup.add(couch);
     }
     if (this.loadedModels.table) {
-      const coffeeTable = this.loadedModels.table.clone();
-      fitModel(coffeeTable, 0.5);
+      const coffeeTable = groundAndScale(this.loadedModels.table.clone(), 0.5);
       coffeeTable.position.set(7.5, 0, 4.0);
       propsGroup.add(coffeeTable);
     }
     if (this.loadedModels.plant) {
-      const plant = this.loadedModels.plant.clone();
-      fitModel(plant, 1.2);
+      const plant = groundAndScale(this.loadedModels.plant.clone(), 1.2);
       plant.position.set(11.0, 0, 7.0);
       propsGroup.add(plant);
     }
 
-    // 5. LIBRARY PROPS (Bookshelves, Study Table)
+    // 5. LIBRARY PROPS (Grounded on floor)
     if (this.loadedModels.bookshelf) {
       for (let z = -9; z <= -3; z += 3) {
-        const shelf = this.loadedModels.bookshelf.clone();
-        fitModel(shelf, 2.8);
+        const shelf = groundAndScale(this.loadedModels.bookshelf.clone(), 2.8);
         shelf.position.set(3.5, 0, z);
         shelf.rotation.y = Math.PI / 2;
         propsGroup.add(shelf);
       }
     }
 
-    // 6. KITCHEN PROPS (Fridge, Counter Cabinet)
+    // 6. KITCHEN PROPS (Grounded on floor)
     if (this.loadedModels.fridge) {
-      const fridge = this.loadedModels.fridge.clone();
-      fitModel(fridge, 2.0);
+      const fridge = groundAndScale(this.loadedModels.fridge.clone(), 2.0);
       fridge.position.set(-10.2, 0, 6.2);
       propsGroup.add(fridge);
     }
     if (this.loadedModels.cabinet) {
-      const cab = this.loadedModels.cabinet.clone();
-      fitModel(cab, 1.0);
+      const cab = groundAndScale(this.loadedModels.cabinet.clone(), 1.0);
       cab.position.set(-6.5, 0, 6.2);
       propsGroup.add(cab);
     }
 
-    // 7. BASEMENT OMINOUS PROPS (Stairs leading down, glowing red void)
+    // 7. BASEMENT STAIRS
     const stairsGroup = new THREE.Group();
     for (let i = 0; i < 7; i++) {
       const stepGeo = new THREE.BoxGeometry(2.6, 0.25, 0.8);
-      const stepMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 });
+      const stepMat = new THREE.MeshLambertMaterial({ color: 0x18181b });
       const step = new THREE.Mesh(stepGeo, stepMat);
       step.position.set(0, -i * 0.25, 14 + i * 0.8);
       stairsGroup.add(step);
@@ -631,51 +539,35 @@ export class House {
     this.scene.add(propsGroup);
   }
 
-  // Setup atmospheric lighting
   setupHouseLighting() {
     // Ambient moonlight
-    const ambientLight = new THREE.AmbientLight(0x1a2332, 0.4);
+    const ambientLight = new THREE.AmbientLight(0x232e3d, 0.65);
     this.scene.add(ambientLight);
 
-    // Directional moonbeam (through skylights/hallway)
-    const moonLight = new THREE.DirectionalLight(0x38bdf8, 0.45);
+    // Directional moonbeam (main lighting)
+    const moonLight = new THREE.DirectionalLight(0x38bdf8, 0.6);
     moonLight.position.set(-10, 20, -10);
-    moonLight.castShadow = true;
-    moonLight.shadow.mapSize.width = 1024;
-    moonLight.shadow.mapSize.height = 1024;
     this.scene.add(moonLight);
 
-    // Flickering Hallway Lamp (point light)
-    const hallLight = new THREE.PointLight(0xffedd5, 0.8, 14, 1.8);
+    // Hallway Light
+    const hallLight = new THREE.PointLight(0xffedd5, 0.85, 14, 1.8);
     hallLight.position.set(0, 3.2, 0);
     this.scene.add(hallLight);
     this.hallLight = hallLight;
 
-    // Cozy warm bedroom lamp
-    const bedLamp = new THREE.PointLight(0xfef08a, 1.1, 10, 1.6);
+    // Bedroom Light
+    const bedLamp = new THREE.PointLight(0xfef08a, 1.0, 10, 1.6);
     bedLamp.position.set(13, 2.5, -9.5);
     this.scene.add(bedLamp);
 
-    // Living room warm light
-    const livingLight = new THREE.PointLight(0xfde68a, 0.7, 12, 1.8);
-    livingLight.position.set(7.5, 3.0, 4);
-    this.scene.add(livingLight);
-
-    // Basement eerie crimson glow (monster spawn point!)
+    // Basement Crimson Void
     const basementLight = new THREE.PointLight(0xef4444, 1.6, 16, 1.2);
     basementLight.position.set(0, 0.8, 19);
     this.scene.add(basementLight);
     this.basementLight = basementLight;
-
-    // Outside Bedroom Door Security Light
-    const doorLight = new THREE.PointLight(0x38bdf8, 0.6, 8, 2.0);
-    doorLight.position.set(9.0, 2.8, -4.5);
-    this.scene.add(doorLight);
-    this.doorLight = doorLight;
   }
 
-  // Helper to create a room with 4 walls, floor, ceiling, and doorway openings
-  createRoom({ group, x, z, width, depth, height, floorMat, wallMat, ceilingMat, name, openings = [] }) {
+  createRoom({ group, x, z, width, depth, height, floorMat, wallMat, ceilingMat, openings = [] }) {
     const halfW = width / 2;
     const halfD = depth / 2;
     const halfH = height / 2;
@@ -686,7 +578,6 @@ export class House {
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(x, 0, z);
-    floor.receiveShadow = true;
     group.add(floor);
 
     // Ceiling
@@ -696,34 +587,26 @@ export class House {
     ceiling.position.set(x, height, z);
     group.add(ceiling);
 
-    // Walls with openings
     const walls = [
-      { side: 'north', cx: x, cz: z - halfD, length: width, isX: true, rot: 0 },
-      { side: 'south', cx: x, cz: z + halfD, length: width, isX: true, rot: 0 },
-      { side: 'east',  cx: x + halfW, cz: z, length: depth, isX: false, rot: Math.PI / 2 },
-      { side: 'west',  cx: x - halfW, cz: z, length: depth, isX: false, rot: Math.PI / 2 }
+      { side: 'north', cx: x, cz: z - halfD, length: width, isX: true },
+      { side: 'south', cx: x, cz: z + halfD, length: width, isX: true },
+      { side: 'east',  cx: x + halfW, cz: z, length: depth, isX: false },
+      { side: 'west',  cx: x - halfW, cz: z, length: depth, isX: false }
     ];
 
     walls.forEach(w => {
       const wallOpenings = openings.filter(o => o.wall === w.side);
       if (wallOpenings.length === 0) {
-        // Solid wall
         const geo = new THREE.BoxGeometry(w.isX ? width : wallThick, height, w.isX ? wallThick : depth);
         const mesh = new THREE.Mesh(geo, wallMat);
         mesh.position.set(w.cx, halfH, w.cz);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
         group.add(mesh);
-
-        // Add collider
         this.colliders.push(new THREE.Box3().setFromObject(mesh));
       } else {
-        // Wall with opening/doorway
         const op = wallOpenings[0];
         const segLen = (w.length - op.width) / 2;
 
         if (w.isX) {
-          // Left segment
           const leftLen = segLen + op.offset;
           if (leftLen > 0.2) {
             const leftMesh = new THREE.Mesh(new THREE.BoxGeometry(leftLen, height, wallThick), wallMat);
@@ -731,7 +614,6 @@ export class House {
             group.add(leftMesh);
             this.colliders.push(new THREE.Box3().setFromObject(leftMesh));
           }
-          // Right segment
           const rightLen = segLen - op.offset;
           if (rightLen > 0.2) {
             const rightMesh = new THREE.Mesh(new THREE.BoxGeometry(rightLen, height, wallThick), wallMat);
@@ -739,12 +621,10 @@ export class House {
             group.add(rightMesh);
             this.colliders.push(new THREE.Box3().setFromObject(rightMesh));
           }
-          // Header lintel over opening
           const headerMesh = new THREE.Mesh(new THREE.BoxGeometry(op.width, height - 2.6, wallThick), wallMat);
           headerMesh.position.set(w.cx + op.offset, 2.6 + (height - 2.6) / 2, w.cz);
           group.add(headerMesh);
         } else {
-          // Z wall (east/west)
           const topLen = segLen + op.offset;
           if (topLen > 0.2) {
             const topMesh = new THREE.Mesh(new THREE.BoxGeometry(wallThick, height, topLen), wallMat);
@@ -768,7 +648,6 @@ export class House {
   }
 
   update(delta) {
-    // Door shaking animation during monster attack
     if (this.doorShaking > 0 && this.doorMesh && !this.isDoorBroken) {
       this.doorShaking -= delta;
       const shakeAmt = this.doorShaking * 0.08;
@@ -779,38 +658,40 @@ export class House {
       }
     }
 
-    // Atmospheric hallway light flicker
     if (this.hallLight && Math.random() < 0.04) {
       this.hallLight.intensity = 0.2 + Math.random() * 0.7;
     }
 
-    // Basement red pulsing
     if (this.basementLight) {
       this.basementLight.intensity = 1.3 + Math.sin(Date.now() * 0.003) * 0.4;
     }
   }
 }
 
-// Helper to scale models automatically to a target height
-function fitModel(model, targetHeight) {
-  const box = new THREE.Box3().setFromObject(model);
+// Universal Ground & Center helper:
+// Guarantees any 3D model sits EXACTLY at Y = 0 on the floor, horizontally centered, scaled to targetHeight!
+export function groundAndScale(object, targetHeight) {
+  object.scale.set(1, 1, 1);
+  object.position.set(0, 0, 0);
+  object.rotation.set(0, 0, 0);
+  object.updateMatrixWorld(true);
+
+  const box = new THREE.Box3().setFromObject(object);
   const size = new THREE.Vector3();
   box.getSize(size);
-  const currentHeight = size.y || 1;
-  const scale = targetHeight / currentHeight;
-  model.scale.set(scale, scale, scale);
-  model.traverse(child => {
-    if (child.isMesh) {
-      child.castShadow = true;
-      child.receiveShadow = true;
-    }
-  });
-}
+  const currentH = size.y || 1;
+  const scale = targetHeight / currentH;
+  object.scale.set(scale, scale, scale);
+  object.updateMatrixWorld(true);
 
-function wallStoneMatProcedural() {
-  return new THREE.MeshStandardMaterial({
-    color: 0x27272a,
-    roughness: 0.95,
-    metalness: 0.1
-  });
+  const scaledBox = new THREE.Box3().setFromObject(object);
+  const center = new THREE.Vector3();
+  scaledBox.getCenter(center);
+
+  const container = new THREE.Group();
+  // Offset so lowest vertex is at y = 0, X and Z are centered
+  object.position.set(-center.x, -scaledBox.min.y, -center.z);
+  container.add(object);
+
+  return container;
 }

@@ -46,8 +46,9 @@ export class NetworkManager {
   async loadCharacterModel() {
     try {
       const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + '/';
+      const buffer = await AssetCache.loadArrayBuffer(base + 'models/Soldier.glb');
       const gltf = await new Promise((resolve, reject) => {
-        this.loader.load(base + 'models/Soldier.glb', resolve, undefined, reject);
+        this.loader.parse(buffer, '', resolve, reject);
       });
       this.soldierTemplate = gltf.scene;
       this.soldierAnimations = gltf.animations || [];
