@@ -49,8 +49,9 @@ export class Monster {
 
   async loadModel() {
     try {
+      const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + '/';
       const gltf = await new Promise((resolve, reject) => {
-        this.loader.load('/models/monster.glb', resolve, undefined, reject);
+        this.loader.load(base + 'models/monster.glb', resolve, undefined, reject);
       });
 
       this.mesh = gltf.scene;

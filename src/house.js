@@ -67,19 +67,20 @@ export class House {
   }
 
   async loadAssets() {
+    const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + '/';
     const assetsToLoad = [
-      { key: 'door', url: '/models/doorWood.glb' },
-      { key: 'bed', url: '/models/bed.glb' },
-      { key: 'tv', url: '/models/tv.glb' },
-      { key: 'table', url: '/models/table.glb' },
-      { key: 'chair', url: '/models/chair.glb' },
-      { key: 'couch', url: '/models/couchBig.glb' },
-      { key: 'bookshelf', url: '/models/bookshelf.glb' },
-      { key: 'fridge', url: '/models/fridge.glb' },
-      { key: 'lamp', url: '/models/lamp.glb' },
-      { key: 'tableLamp', url: '/models/tableLamp.glb' },
-      { key: 'plant', url: '/models/plant.glb' },
-      { key: 'cabinet', url: '/models/cabinet.glb' }
+      { key: 'door', url: base + 'models/doorWood.glb' },
+      { key: 'bed', url: base + 'models/bed.glb' },
+      { key: 'tv', url: base + 'models/tv.glb' },
+      { key: 'table', url: base + 'models/table.glb' },
+      { key: 'chair', url: base + 'models/chair.glb' },
+      { key: 'couch', url: base + 'models/couchBig.glb' },
+      { key: 'bookshelf', url: base + 'models/bookshelf.glb' },
+      { key: 'fridge', url: base + 'models/fridge.glb' },
+      { key: 'lamp', url: base + 'models/lamp.glb' },
+      { key: 'tableLamp', url: base + 'models/tableLamp.glb' },
+      { key: 'plant', url: base + 'models/plant.glb' },
+      { key: 'cabinet', url: base + 'models/cabinet.glb' }
     ];
 
     for (const item of assetsToLoad) {
